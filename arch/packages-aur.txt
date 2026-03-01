@@ -1,0 +1,4 @@
+# AUR packages — install with yay or paru
+# lsd is available in official repos; only add here if not found
+# ttf-jetbrains-mono-nerd provides JetBrains Mono Nerd Font for terminal icons
+ttf-jetbrains-mono-nerd
