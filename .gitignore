@@ -1,0 +1,22 @@
+# 不追踪 SSH 密钥和敏感信息
+.ssh/
+*.secret
+*.key
+*.pem
+
+# 不追踪历史文件
+.zsh_history
+.bash_history
+.mysql_history
+
+# 不追踪缓存
+.cache/
+*.zwc
+.zcompdump*
+
+# Claude 认证信息
+.claude.json
+
+# 系统文件
+.DS_Store
+Thumbs.db

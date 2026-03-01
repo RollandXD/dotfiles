@@ -1,0 +1,22 @@
+[core]
+    pager = delta
+
+[interactive]
+    diffFilter = delta --color-only
+
+[delta]
+    navigate = true    # 允许用 n/N 跳转修改点
+    light = false      # 我们是暗色主题
+    line-numbers = true
+    side-by-side = true # 并排显示！最帅的功能！
+
+[merge]
+    conflictstyle = diff3
+
+[diff]
+    colorMoved = default
+[user]
+	email = 3271787200@qq.com
+	name = Rolland
+[init]
+	defaultBranch = main
