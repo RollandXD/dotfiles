@@ -17,3 +17,5 @@ unzip
 vim
 zoxide
 zsh
+noto-fonts-cjk
+ttf-jetbrains-mono-nerd
