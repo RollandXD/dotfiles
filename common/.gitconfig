@@ -1,0 +1,12 @@
+[user]
+	name = RollandXD
+	email = 3271787200@qq.com
+[http]
+	sslbackend = schannel
+	postBuffer = 524288000
+	lowSpeedLimit = 0
+	lowSpeedTime = 999999
+[pull]
+	rebase = false
+[core]
+	quotepath = false
