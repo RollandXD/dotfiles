@@ -32,11 +32,5 @@ return {
         highlight_grey = "Comment",
       },
     })
-
-    -- 如果你安装了 nvim-cmp，需要集成（回车键与补全配合）
-    -- 取消下面的注释（安装 nvim-cmp 后）：
-    -- local cmp_autopairs = require("nvim-autopairs.completion.cmp")
-    -- local cmp = require("cmp")
-    -- cmp.event:on("confirm_done", cmp_autopairs.on_confirm_done())
   end,
 }

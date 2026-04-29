@@ -10,8 +10,34 @@ return {
       { "<S-F11>", function() require('dap').step_out() end, desc = "单步跳出" },
       { "<F6>", function() require('dap').continue() end, desc = "继续执行" },
       { "<leader>db", function() require('dap').toggle_breakpoint() end, desc = "切换断点" },
+      { "<leader>dB", function() require("dap").set_breakpoint(vim.fn.input("断点条件: ")) end, desc = "条件断点" },
       { "<leader>dc", function() require('dap').continue() end, desc = "继续" },
+      { "<leader>dr", function() require("dap").run_last() end, desc = "重运行上次调试" },
       { "<leader>dt", function() require('dap').terminate() end, desc = "终止调试" },
+      { "<leader>da", function()
+        require("dap").continue({
+          before = function(config)
+            local args_str = vim.fn.input("运行参数: ", "")
+            if args_str ~= "" then
+              config.args = require("dap.utils").splitstr(args_str)
+            end
+            return config
+          end,
+        })
+      end, desc = "带参数运行" },
+      { "<leader>dC", function() require('dap').run_to_cursor() end, desc = "运行到光标" },
+      { "<leader>dg", function() require('dap').goto_() end, desc = "跳到指定行" },
+      { "<leader>di", function() require('dap').step_into() end, desc = "单步进入" },
+      { "<leader>dj", function() require('dap').down() end, desc = "调用栈向下" },
+      { "<leader>dk", function() require('dap').up() end, desc = "调用栈向上" },
+      { "<leader>do", function() require('dap').step_out() end, desc = "单步跳出" },
+      { "<leader>dO", function() require('dap').step_over() end, desc = "单步跳过" },
+      { "<leader>dP", function() require('dap').pause() end, desc = "暂停" },
+      { "<leader>ds", function() require('dap').session() end, desc = "查看会话" },
+      { "<leader>dw", function() require('dap.ui.widgets').hover() end, desc = "悬浮查看变量" },
+      { "<leader>dl", function()
+        require('dap').set_breakpoint(nil, nil, vim.fn.input("日志消息: "))
+      end, desc = "日志断点" },
     },
 
     config = function()
@@ -43,6 +69,55 @@ return {
         numhl = 'DiagnosticInfo'
       })
 
+      -- Python 调试适配器 (debugpy via Mason)
+      dap.adapters.python = {
+        type = "executable",
+        command = vim.fn.stdpath("data") .. "/mason/packages/debugpy/venv/bin/python",
+        args = { "-m", "debugpy.adapter" },
+      }
+
+      -- Python 调试配置
+      dap.configurations.python = {
+        {
+          name = "启动当前 Python 文件",
+          type = "python",
+          request = "launch",
+          program = "${file}",
+          console = "integratedTerminal",
+        },
+        {
+          name = "启动 Python 模块",
+          type = "python",
+          request = "launch",
+          module = function()
+            return vim.fn.input("模块名: ")
+          end,
+          console = "integratedTerminal",
+        },
+        {
+          name = "启动（带参数）",
+          type = "python",
+          request = "launch",
+          program = "${file}",
+          args = function()
+            local args_str = vim.fn.input("运行参数: ", "")
+            return args_str ~= "" and require("dap.utils").splitstr(args_str) or {}
+          end,
+          console = "integratedTerminal",
+        },
+        {
+          name = "附加到远程 debugpy",
+          type = "python",
+          request = "attach",
+          connect = {
+            host = "127.0.0.1",
+            port = function()
+              return tonumber(vim.fn.input("调试端口: ", "5678"))
+            end,
+          },
+        },
+      }
+
       -- Java 调试适配器配置
       dap.configurations.java = {
         {
@@ -69,6 +144,68 @@ return {
           end,
         },
       }
+
+      -- C/C++ 调试适配器 (codelldb via Mason)
+      dap.adapters.codelldb = {
+        type = "server",
+        port = "${port}",
+        executable = {
+          command = vim.fn.stdpath("data") .. "/mason/packages/codelldb/codelldb",
+          args = { "--port", "${port}" },
+        },
+      }
+
+      -- C/C++ 调试配置
+      local cpp_configs = {
+        {
+          name = "LongMarch 调试（Debug）",
+          type = "codelldb",
+          request = "launch",
+          program = "${workspaceFolder}/build/debug/Application/LongMarch",
+          cwd = "${workspaceFolder}/build/debug/Application",
+          stopOnEntry = false,
+          args = {},
+        },
+        {
+          name = "LongMarch 调试（Release）",
+          type = "codelldb",
+          request = "launch",
+          program = "${workspaceFolder}/build/release/Application/LongMarch",
+          cwd = "${workspaceFolder}/build/release/Application",
+          stopOnEntry = false,
+          args = {},
+        },
+        {
+          name = "启动（选择可执行文件）",
+          type = "codelldb",
+          request = "launch",
+          program = function()
+            local build_dir = vim.fn.getcwd() .. "/build"
+            return vim.fn.input("可执行文件: ", build_dir .. "/", "file")
+          end,
+          cwd = function()
+            return vim.fn.input("工作目录: ", vim.fn.getcwd() .. "/", "file")
+          end,
+          stopOnEntry = false,
+        },
+        {
+          name = "附加到进程",
+          type = "codelldb",
+          request = "attach",
+          pid = require("dap.utils").pick_process,
+          cwd = "${workspaceFolder}",
+        },
+      }
+      dap.configurations.cpp = cpp_configs
+      dap.configurations.c = cpp_configs
+
+      -- 支持加载 .vscode/launch.json（处理 JSONC 注释格式）
+      local vscode_ok, vscode_dap = pcall(require, "dap.ext.vscode")
+      if vscode_ok then
+        vscode_dap.json_decode = function(str)
+          return vim.json.decode(str:gsub("//[^\n]*", ""))
+        end
+      end
 
       -- Java 调试适配器（通过 nvim-jdtls 集成）
       dap.adapters.java = function(callback)
@@ -169,6 +306,16 @@ return {
         dapui.close()
       end
     end
+  },
+
+  -- Mason 自动安装 DAP 适配器
+  {
+    "jay-babu/mason-nvim-dap.nvim",
+    dependencies = { "williamboman/mason.nvim", "mfussenegger/nvim-dap" },
+    opts = {
+      ensure_installed = { "codelldb", "debugpy" },
+      automatic_installation = true,
+    },
   },
 
   -- DAP 虚拟文本（在代码中显示变量值）

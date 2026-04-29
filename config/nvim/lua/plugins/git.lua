@@ -1,30 +1,9 @@
 -- ========== Git 集成插件 ==========
 -- 提供完整的 Git 工作流支持
+-- lazygit 已由 snacks.nvim 内置管理
 
 return {
-  -- ========== LazyGit - TUI Git 客户端 ==========
-  -- 最强大的 Git 操作界面，完全替代命令行
-  {
-    "kdheepak/lazygit.nvim",
-    cmd = {
-      "LazyGit",
-      "LazyGitConfig",
-      "LazyGitCurrentFile",
-      "LazyGitFilter",
-      "LazyGitFilterCurrentFile",
-    },
-    dependencies = {
-      "nvim-lua/plenary.nvim",
-    },
-    keys = {
-      { "<leader>gg", "<cmd>LazyGit<cr>", desc = "LazyGit (根目录)" },
-      { "<leader>gG", "<cmd>LazyGitCurrentFile<cr>", desc = "LazyGit (当前文件)" },
-      { "<leader>gc", "<cmd>LazyGitFilter<cr>", desc = "LazyGit Commits" },
-    },
-  },
-
   -- ========== GitSigns - Git 文件变化标记 ==========
-  -- 在行号旁显示 git diff，提供行级 Git 操作
   {
     "lewis6991/gitsigns.nvim",
     event = { "BufReadPre", "BufNewFile" },
@@ -67,15 +46,12 @@ return {
 
         map("n", "<leader>hS", gs.stage_buffer, "暂存整个文件")
         map("n", "<leader>hR", gs.reset_buffer, "重置整个文件")
-
         map("n", "<leader>hu", gs.undo_stage_hunk, "撤销暂存")
-
         map("n", "<leader>hp", gs.preview_hunk, "预览改动")
         map("n", "<leader>hb", function()
           gs.blame_line({ full = true })
         end, "查看行 Blame")
         map("n", "<leader>hB", gs.toggle_current_line_blame, "切换行 Blame 显示")
-
         map("n", "<leader>hd", gs.diffthis, "Diff 当前文件")
         map("n", "<leader>hD", function()
           gs.diffthis("~")
@@ -88,50 +64,97 @@ return {
   },
 
   -- ========== Diffview - 强大的 Diff 查看器 ==========
-  -- 提供完整的 diff 和文件历史查看功能
   {
     "sindrets/diffview.nvim",
     cmd = { "DiffviewOpen", "DiffviewClose", "DiffviewToggleFiles", "DiffviewFocusFiles", "DiffviewFileHistory" },
-    dependencies = { "nvim-lua/plenary.nvim" },
     keys = {
-      { "<leader>gd", "<cmd>DiffviewOpen<cr>", desc = "打开 Diff 视图" },
-      { "<leader>gD", "<cmd>DiffviewClose<cr>", desc = "关闭 Diff 视图" },
+      {
+        "<leader>gd",
+        function()
+          local lib = require("diffview.lib")
+          if next(lib.views) then
+            vim.cmd("DiffviewClose")
+          else
+            vim.cmd("DiffviewOpen")
+          end
+        end,
+        desc = "Toggle Diff 视图",
+      },
+      {
+        "<leader>gs",
+        function()
+          local lib = require("diffview.lib")
+          if next(lib.views) then
+            vim.cmd("DiffviewClose")
+          else
+            vim.cmd("DiffviewOpen --staged")
+          end
+        end,
+        desc = "Toggle Staged Diff",
+      },
       { "<leader>gh", "<cmd>DiffviewFileHistory %<cr>", desc = "当前文件历史" },
       { "<leader>gH", "<cmd>DiffviewFileHistory<cr>", desc = "项目历史" },
+      { "<leader>gh", ":'<,'>DiffviewFileHistory<cr>", mode = "v", desc = "选中行历史" },
     },
     opts = {
       enhanced_diff_hl = true,
       view = {
         default = {
           layout = "diff2_horizontal",
+          disable_diagnostics = true,
+          winbar_info = true,
         },
         file_history = {
           layout = "diff2_horizontal",
+          disable_diagnostics = true,
+          winbar_info = true,
         },
+        merge_tool = {
+          layout = "diff3_mixed",
+          disable_diagnostics = true,
+          winbar_info = true,
+        },
+      },
+      file_panel = {
+        listing_style = "tree",
+        tree_options = {
+          flatten_dirs = true,
+          folder_statuses = "only_folded",
+        },
+        win_config = {
+          position = "left",
+          width = 35,
+        },
+      },
+      default_args = {
+        DiffviewOpen = { "--untracked-files=no" },
+      },
+      hooks = {
+        diff_buf_read = function(_)
+          vim.opt_local.wrap = false
+          vim.opt_local.list = false
+          vim.opt_local.relativenumber = false
+        end,
       },
     },
   },
 
   -- ========== Neogit - Magit 风格的 Git 界面 ==========
-  -- 类似 Emacs Magit 的 Git 界面（可选，如果你更喜欢 LazyGit 可以不用）
   {
     "NeogitOrg/neogit",
     cmd = "Neogit",
     dependencies = {
       "nvim-lua/plenary.nvim",
       "sindrets/diffview.nvim",
-      "nvim-telescope/telescope.nvim",
     },
     keys = {
-      { "<leader>gn", "<cmd>Neogit<cr>", desc = "Neogit" },
-      { "<leader>gC", "<cmd>Neogit commit<cr>", desc = "Neogit Commit" },
+      { "<leader>gn", "<cmd>Neogit<cr>", desc = "打开 Neogit" },
+      { "<leader>gC", "<cmd>Neogit commit<cr>", desc = "使用 Neogit 提交" },
     },
     opts = {
       integrations = {
-        telescope = true,
         diffview = true,
       },
-      -- 使用浮动窗口而不是分屏
       kind = "tab",
     },
   },

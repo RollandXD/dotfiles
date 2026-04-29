@@ -3,7 +3,7 @@
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 
 -- 自动安装 lazy.nvim
-if not vim.loop.fs_stat(lazypath) then
+if not (vim.uv or vim.loop).fs_stat(lazypath) then
   print("正在安装 lazy.nvim 插件管理器...")
   vim.fn.system({
     "git",

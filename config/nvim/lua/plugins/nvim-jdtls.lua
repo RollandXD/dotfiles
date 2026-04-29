@@ -83,16 +83,10 @@ return {
         bundles = {}  -- 这里可以添加 java-debug-adapter 的 jar 包路径
       },
 
-      -- LSP 快捷键配置（继承现有风格）
+      -- 复用通用 on_attach + Java 特有快捷键
       on_attach = function(client, bufnr)
-        local opts = { noremap = true, silent = true, buffer = bufnr }
-
-        -- 使用现有的快捷键风格
-        vim.keymap.set("n", "gd", vim.lsp.buf.definition, opts)
-        vim.keymap.set("n", "gr", vim.lsp.buf.references, opts)
-        vim.keymap.set("n", "gh", vim.lsp.buf.hover, opts)
-        vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action, opts)
-        vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename, opts)
+        -- 通用 LSP 快捷键、inlay hints、document highlight 等
+        require("config.lsp-on-attach").on_attach(client, bufnr)
 
         -- Java 特有快捷键
         vim.keymap.set("n", "<leader>jo", jdtls.organize_imports, { buffer = bufnr, desc = "整理 Java 导入" })
@@ -106,8 +100,8 @@ return {
         end, { buffer = bufnr, desc = "提取方法" })
       end,
 
-      -- 代码补全能力（与 nvim-cmp 集成）
-      capabilities = require('cmp_nvim_lsp').default_capabilities(),
+      -- 代码补全能力（与 blink.cmp 集成）
+      capabilities = require('blink.cmp').get_lsp_capabilities(),
     }
 
     -- 启动或附加到 JDTLS 服务器

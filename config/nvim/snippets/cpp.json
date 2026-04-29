@@ -1,0 +1,148 @@
+{
+  "Section Comment": {
+    "prefix": "sec",
+    "body": ["// ── ${1:section name} ────────────────────────────────────────────"],
+    "description": "分割线注释"
+  },
+  "Constructor Section": {
+    "prefix": "ctor",
+    "body": ["// ── ctor ────────────────────────────────────────────"],
+    "description": "构造函数分割线"
+  },
+  "Destructor Section": {
+    "prefix": "dtor",
+    "body": ["// ── dtor ────────────────────────────────────────────"],
+    "description": "析构函数分割线"
+  },
+  "Public API Section": {
+    "prefix": "pub",
+    "body": ["// ── public api ────────────────────────────────────────────"],
+    "description": "公共接口分割线"
+  },
+  "Public Accessors Section": {
+    "prefix": "acc",
+    "body": ["// ── accessors ────────────────────────────────────────────"],
+    "description": "访问器分割线"
+  },
+  "Private Helpers Section": {
+    "prefix": "pri",
+    "body": ["// ── private helpers ────────────────────────────────────────────"],
+    "description": "私有帮助函数分割线"
+  },
+  "Protected Section": {
+    "prefix": "pro",
+    "body": ["// ── protected ────────────────────────────────────────────"],
+    "description": "受保护成员分割线"
+  },
+  "Overrides Section": {
+    "prefix": "ovr",
+    "body": ["// ── overrides ────────────────────────────────────────────"],
+    "description": "重写方法分割线"
+  },
+  "State Section": {
+    "prefix": "st",
+    "body": ["// ── state ────────────────────────────────────────────"],
+    "description": "状态成员分割线"
+  },
+  "TODO Comment": {
+    "prefix": "todo",
+    "body": ["// ${1:TODO}: ${2:fill me}"],
+    "description": "TODO 标签注释"
+  },
+  "FIXME Comment": {
+    "prefix": "fix",
+    "body": ["// ${1:FIXME}: ${2:fill me}"],
+    "description": "FIXME 标签注释"
+  },
+  "WARN Comment": {
+    "prefix": "warn",
+    "body": ["// ${1:WARN}: ${2:fill me}"],
+    "description": "WARN 标签注释"
+  },
+  "PERF Comment": {
+    "prefix": "perf",
+    "body": ["// ${1:PERF}: ${2:fill me}"],
+    "description": "PERF 标签注释"
+  },
+  "NOTE Comment": {
+    "prefix": "note",
+    "body": ["// ${1:NOTE}: ${2:fill me}"],
+    "description": "NOTE 标签注释"
+  },
+  "Class Skeleton": {
+    "prefix": "cls",
+    "body": [
+      "class ${1:ClassName} {",
+      "public:",
+      "    ${1}();",
+      "    ~${1}();",
+      "",
+      "    ${2:// public}",
+      "",
+      "private:",
+      "    ${3:// private}",
+      "};"
+    ],
+    "description": "C++ 类定义骨架"
+  },
+  "unique_ptr": {
+    "prefix": "uptr",
+    "body": ["std::unique_ptr<${1:Type}> ${2:name}"],
+    "description": "unique_ptr 声明"
+  },
+  "shared_ptr": {
+    "prefix": "sptr",
+    "body": ["std::shared_ptr<${1:Type}> ${2:name}"],
+    "description": "shared_ptr 声明"
+  },
+  "make_unique": {
+    "prefix": "mkup",
+    "body": ["std::make_unique<${1:Type}>($2)"],
+    "description": "make_unique 调用"
+  },
+  "make_shared": {
+    "prefix": "mksp",
+    "body": ["std::make_shared<${1:Type}>($2)"],
+    "description": "make_shared 调用"
+  },
+  "Range For Auto": {
+    "prefix": "fora",
+    "body": [
+      "for (auto& ${1:item} : ${2:container}) {",
+      "    $3",
+      "}"
+    ],
+    "description": "range-based for (auto&)"
+  },
+  "Range For Const Auto": {
+    "prefix": "forc",
+    "body": [
+      "for (const auto& ${1:item} : ${2:container}) {",
+      "    $3",
+      "}"
+    ],
+    "description": "range-based for (const auto&)"
+  },
+  "Header Guard": {
+    "prefix": "guard",
+    "body": [
+      "#ifndef ${1:HEADER}_H",
+      "#define ${1}_H",
+      "",
+      "$2",
+      "",
+      "#endif // ${1}_H"
+    ],
+    "description": "头文件保护宏"
+  },
+  "Include Quoted": {
+    "prefix": "inc",
+    "body": ["#include \"${1:header.h}\""],
+    "description": "#include \"...\""
+  },
+  "Include System": {
+    "prefix": "incs",
+    "body": ["#include <${1:iostream}>"],
+    "description": "#include <...>"
+  }
+}

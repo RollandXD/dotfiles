@@ -14,14 +14,9 @@ require("config.lazy")
 -- 加载自动命令
 require("config.autocmds")
 
--- ========== 欢迎提示 ==========
--- 首次启动时显示提示信息
-vim.api.nvim_create_autocmd("VimEnter", {
-  once = true,
-  callback = function()
-    -- 只在没有打开文件时显示
-    if vim.fn.argc() == 0 then
-      print("🎉 Neovim 配置加载成功！按 <Space> 可查看快捷键提示")
-    end
-  end,
-})
+-- 加载 C++ 开发辅助命令
+require("config.cpp-tools")
+
+-- 会话管理由 persistence.nvim 插件自动处理
+
+-- 欢迎提示已由 snacks dashboard 取代

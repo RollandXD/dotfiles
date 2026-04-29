@@ -1,0 +1,27 @@
+{
+  "Section Comment": {
+    "prefix": "sec",
+    "body": ["-- ── ${1:section name} ────────────────────────────────────────────"],
+    "description": "分割线注释"
+  },
+  "TODO Comment": {
+    "prefix": "todo",
+    "body": ["-- ${1:TODO}: ${2:fill me}"],
+    "description": "TODO 标签注释"
+  },
+  "FIXME Comment": {
+    "prefix": "fix",
+    "body": ["-- ${1:FIXME}: ${2:fill me}"],
+    "description": "FIXME 标签注释"
+  },
+  "NOTE Comment": {
+    "prefix": "note",
+    "body": ["-- ${1:NOTE}: ${2:fill me}"],
+    "description": "NOTE 标签注释"
+  },
+  "WARN Comment": {
+    "prefix": "warn",
+    "body": ["-- ${1:WARN}: ${2:fill me}"],
+    "description": "WARN 标签注释"
+  }
+}
