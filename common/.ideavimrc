@@ -1,0 +1,269 @@
+" ============================================================================
+" .ideavimrc - 仿 LazyVim 风格的全面配置
+" ----------------------------------------------------------------------------
+" 说明: 所有的注释均已安全分离，可直接复制使用。
+" ============================================================================
+
+" ============================================================================
+" 1. 核心启动设置 (必须置顶)
+" ============================================================================
+
+" 关闭光标移动触发展开
+set foldopen-=all
+
+" 强制让 Vim 处理空格键，防止被 IDEA 原生快捷键拦截失效
+sethandler <Space> a:vim
+
+nnoremap <Space> <Nop>
+vnoremap <Space> <Nop>
+
+" 将空格键设为 Leader 键，这是开启各种高级菜单的钥匙
+let mapleader = " "
+
+" 开启 which-key 支持，按下 leader 键后会弹出快捷键提示窗
+set which-key
+
+" 设置提示窗口弹出的等待时间
+set notimeout
+
+
+" ============================================================================
+" 2. 插件加载 (如果未生效，请在 IDEA 插件市场安装对应插件)
+" ============================================================================
+
+" 开启 surround 插件，支持快速修改包裹符号 (如 ys, cs, ds)
+set surround
+
+" 开启 commentary 插件，支持快速注释 (按 gc)
+set commentary
+
+
+" ============================================================================
+" 3. 编辑器行为与搜索设置
+" ============================================================================
+
+" 开启 IDEA 的智能行合并功能 (按 J 时会格式化代码，而不是生硬合并)
+set ideajoin
+
+" 在使用重构功能 (如重命名) 后，自动退回到 Vim 的 Normal 模式
+set idearefactormode=keep
+
+" 打通 Vim 和操作系统的剪贴板，复制粘贴无缝衔接
+set clipboard=unnamed,unnamedplus
+
+" 增量搜索：输入搜索词时实时高亮匹配结果
+set incsearch
+
+" 搜索后保持结果高亮
+set hlsearch
+
+" 搜索时默认忽略大小写
+set ignorecase
+
+" 智能大小写：如果搜索词包含大写字母，则开启精确匹配
+set smartcase
+
+" 搜索到文件底部时，自动回到顶部继续搜索
+set wrapscan
+
+
+" ============================================================================
+" 4. 界面与显示设置
+" ============================================================================
+
+" 显示绝对行号
+set number
+
+" 显示相对行号，配合 j/k 移动非常方便 (LazyVim 标配)
+set relativenumber
+
+" 屏幕滚动时，光标上下方始终保留 5 行可见区域，防止视野突然丢失
+set scrolloff=5
+
+" 高亮光标当前所在的行
+set cursorline
+
+" 输入右括号时，短暂高亮匹配的左括号
+set showmatch
+
+
+" ============================================================================
+" 5. LazyVim 风格快捷键 (Space 引导的主菜单)
+" ============================================================================
+
+" --- [f] Files (文件操作) ---
+
+" Space + f + f : 触发 IDEA 的 Search Everywhere (搜索一切)
+nnoremap <leader>ff :action SearchEverywhere<CR>
+
+" Space + f + F : 查找并跳转到文件 (Goto File)
+nnoremap <leader>fF :action GotoFile<CR>
+
+" Space + f + r : 打开最近使用的文件列表 (Recent Files)
+nnoremap <leader>fr :action RecentFiles<CR>
+
+" Space + f + n : 新建文件、类或目录 (New Element)
+nnoremap <leader>fn :action NewElement<CR>
+
+" Space + f + w : 保存当前文件 (Write)
+nnoremap <leader>fw :w<CR>
+
+
+" --- [c] Code (代码重构与智能提示) ---
+
+" Space + c + a : 触发万能小灯泡，显示代码意图和快速修复 (Code Action)
+nnoremap <leader>ca :action ShowIntentionActions<CR>
+
+" Space + c + f : 格式化当前文件代码 (Code Format)
+nnoremap <leader>cf :action ReformatCode<CR>
+
+" Space + c + r : 智能重命名变量或方法，同步修改所有引用 (Code Rename)
+nnoremap <leader>cr :action RenameElement<CR>
+
+" Space + c + i : 清理无用的 import 包并排序 (Code Import)
+nnoremap <leader>ci :action OptimizeImports<CR>
+
+" Space + c + d : 跳转到变量或方法的定义处 (Code Declaration)
+nnoremap <leader>cd :action GotoDeclaration<CR>
+nnoremap gd :action GotoDeclaration<CR>
+
+" Space + c + y : 跳转到变量声明时的类型定义处 (Code Type)
+nnoremap <leader>cy :action GotoTypeDeclaration<CR>
+
+
+" --- [s] Search (搜索进阶) ---
+
+" Space + s + g : 在整个项目中搜索文本串 (Find in Path / Grep)
+nnoremap <leader>sg :action FindInPath<CR>
+
+" Space + s + w : 查找当前词在项目中的所有引用 (Search Word/Usages)
+nnoremap <leader>sw :action FindUsages<CR>
+
+" Space + s + s : 弹出当前文件的结构大纲，方便查看方法 (Search Structure)
+nnoremap <leader>ss :action FileStructurePopup<CR>
+
+" Space + s + c : 在整个项目中全局替换文本串
+nnoremap <leader>sc :action ActivateReplaceInPathToolWindow<CR>
+
+
+" --- [w] Windows (窗口与分屏管理) ---
+
+" Space + w + w : 在多个分屏窗口之间轮换焦点
+nnoremap <leader>ww <C-W>w
+
+" Space + w + d : 关闭当前获得焦点的窗口
+nnoremap <leader>wd :action CloseContent<CR>
+
+" Space + w + - : 水平分屏 (上下切分)
+nnoremap <leader>w- :action SplitHorizontally<CR>
+
+" Space + w + | : 垂直分屏 (左右切分)
+nnoremap <leader>w| :action SplitVertically<CR>
+
+" Space + w + h/j/k/l : 类似 Vim 原生的切屏方向导航
+nnoremap <leader>wh <C-W>h
+nnoremap <leader>wj <C-W>j
+nnoremap <leader>wk <C-W>k
+nnoremap <leader>wl <C-W>l
+
+
+" --- [b] Buffers (顶部标签页管理) ---
+
+" Space + b + d : 关闭当前标签页 (Buffer Delete)
+nnoremap <leader>bd :action CloseContent<CR>
+
+" Space + b + o : 关闭除了当前标签页之外的所有其他标签 (Buffer Other)
+nnoremap <leader>bo :action CloseAllEditorsButActive<CR>
+
+" Space + b + b : 弹出最近文件列表，方便切换 Buffer
+nnoremap <leader>bb :action RecentFiles<CR>
+
+" [ + b : 切换到左侧的上一个标签页
+nnoremap [b :action PreviousTab<CR>
+
+" ] + b : 切换到右侧的下一个标签页
+nnoremap ]b :action NextTab<CR>
+
+
+" --- [x] Diagnostics (错误排查与跳转) ---
+
+" ] + d : 跳转到代码中的下一个错误或警告 (Diagnostics Next)
+nnoremap ]d :action GotoNextError<CR>
+
+" [ + d : 跳转到代码中的上一个错误或警告 (Diagnostics Previous)
+nnoremap [d :action GotoPreviousError<CR>
+
+" Space + x + x : 弹窗显示当前行错误的详细描述信息
+nnoremap <leader>xx :action ShowErrorDescription<CR>
+
+
+" --- [u] UI Toggles (界面开关) ---
+
+" Space + u + n : 快速切换相对行号的开启与关闭
+nnoremap <leader>un :set relativenumber!<CR>
+
+
+" ============================================================================
+" 6. 基础移动与模式增强
+" ============================================================================
+
+" 强制让 Ctrl + [ 在所有模式下都等价于 Esc 键，防止冲突
+nnoremap <C-[> <Esc>
+vnoremap <C-[> <Esc>
+inoremap <C-[> <Esc>
+
+" 当代码自动换行时，j 和 k 按视觉行移动，而不是物理行
+nnoremap j gj
+nnoremap k gk
+
+" 大写 H 快速跳转到当前行的非空行首
+nnoremap H ^
+
+" 大写 L 快速跳转到当前行的行尾
+nnoremap L $
+
+" 大写 J 快速向下跳跃 5 行 (支持 Normal 和 Visual 模式)
+nnoremap J 5j
+vnoremap J 5j
+
+" 大写 K 快速向上跳跃 5 行 (支持 Normal 和 Visual 模式)
+nnoremap K 5k
+vnoremap K 5k
+
+" 按 ctrl n 键自动清除搜索后的高亮显示 (LazyVim 习惯)
+nnoremap <C-n> :noh<CR>
+
+" 在 Visual 模式下，缩进后依然保持选中状态，方便连续缩进
+vnoremap < <gv
+vnoremap > >gv
+
+" 在 Visual 模式下粘贴时，不把被替换的内容覆盖到系统剪贴板 (极度实用)
+vnoremap p "_dP
+
+
+" ============================================================================
+" 7. IDEA 特色功能集成 (行移动与多光标)
+" ============================================================================
+
+" --- 行移动 ---
+
+" Visual 模式下，按 Alt + j 将选中的代码块整体下移
+vnoremap <A-j> :action MoveLineDown<CR>
+
+" Visual 模式下，按 Alt + k 将选中的代码块整体上移
+vnoremap <A-k> :action MoveLineUp<CR>
+
+
+" --- 多光标操作 ---
+
+" Normal 和 Visual 模式下，按 Ctrl + j 选中下一个相同的单词 (类似 VSCode 的 Ctrl+D)
+nnoremap <C-j> :action SelectNextOccurrence<CR>
+vnoremap <C-j> :action SelectNextOccurrence<CR>
+
+" Normal 和 Visual 模式下，按 Ctrl + k 取消选中上一个单词
+nnoremap <C-k> :action UnselectPreviousOccurrence<CR>
+vnoremap <C-k> :action UnselectPreviousOccurrence<CR>
+
+" 8. 禁止蜂鸣声
+set visualbell
+set noerrorbells
