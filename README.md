@@ -14,20 +14,31 @@ Personal dotfiles supporting two environments:
 ```
 dotfiles/
 ├── setup.sh              # WSL2/Ubuntu 安装脚本
-├── home/
-│   ├── .zshrc            # WSL2/Ubuntu 版 zshrc
-│   ├── .p10k.zsh         # Powerlevel10k 配置（共用）
-│   ├── .gitconfig        # Git 配置（共用）
-│   ├── .tmux.conf        # Tmux 配置（共用）
-│   └── .vimrc            # Vim 配置（共用）
+├── home/                 # WSL2/Ubuntu 专属 dotfiles
+│   ├── .zshrc
+│   ├── .p10k.zsh         # Powerlevel10k（也被 Arch 共用）
+│   ├── .gitconfig        # Git + delta Catppuccin 配色（也被 Arch 共用）
+│   ├── .tmux.conf        # Tmux（也被 Arch 共用）
+│   └── .vimrc            # Vim（也被 Arch 共用）
 ├── config/
-│   └── nvim/             # Neovim 配置（共用）
-└── arch/
-    ├── setup.sh          # Arch Linux 安装脚本
-    ├── packages.txt      # pacman 包列表
-    ├── packages-aur.txt  # AUR 包列表
-    └── home/
-        └── .zshrc        # Arch Linux 版 zshrc
+│   └── nvim/             # Neovim 配置（跨平台共用）
+├── common/               # 跨系统共享
+│   ├── .gitconfig        # 身份信息 + http 设置
+│   └── .ideavimrc        # IdeaVim
+├── arch/                 # Arch Linux (niri + DMS) 专属
+│   ├── setup.sh
+│   ├── packages.txt      # pacman 包列表
+│   ├── packages-aur.txt  # AUR 包列表
+│   ├── home/
+│   │   └── .zshrc        # Arch 版 zshrc
+│   └── config/
+│       ├── niri/         # 滚动平铺 Wayland 合成器（含 dms/、shorin-niri/ 子配置）
+│       ├── kitty/        # 终端（Catppuccin Frappe）
+│       └── DankMaterialShell/
+│           ├── settings.json   # DMS 用户设置
+│           └── firefox.css     # DMS Firefox 样式注入
+└── windows/              # Windows 专属
+    └── vscode/           # VSCode keybindings + settings
 ```
 
 ---
@@ -61,6 +72,9 @@ p10k configure
 - **开发环境**：Java 21（`jdk21-openjdk`）
 - **Git**：git-delta 并排 diff 视图
 - **终端复用**：Tmux
+- **桌面环境**：niri（滚动平铺 Wayland 合成器）+ DankMaterialShell（QuickShell 状态栏）+ kitty 终端
+
+> 注：niri / DMS / kitty 配置只能链接，不会自动安装这些软件。请先按各自项目说明装好运行时（`niri`、`quickshell` 等），再跑 `arch/setup.sh`。
 
 ### 验证
 
@@ -83,6 +97,22 @@ bash ~/dotfiles/setup.sh
 ```
 
 WSL 版包含代理自动配置（`proxyon`/`proxyoff`）和 IntelliJ IDEA Windows 启动函数（`idea()`）。
+
+---
+
+## 日常更新
+
+由于配置文件全部以软链接方式纳管，编辑仓库即生效，跨机器同步也只需 git：
+
+```bash
+# 在仓库目录里改完后
+cd ~/dotfiles && git add . && git commit -m "..." && git push
+
+# 在另一台机器拉取最新配置
+cd ~/dotfiles && git pull
+```
+
+不需要重跑 `setup.sh`，除非新增了链接目标。
 
 ---
 

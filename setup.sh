@@ -137,6 +137,8 @@ for file in "$DOTFILES_DIR"/home/.*; do
     filename="$(basename "$file")"
     # 跳过 . 和 ..
     [[ "$filename" == "." || "$filename" == ".." ]] && continue
+    # 跳过 codex 工具留下的备份文件
+    [[ "$filename" == *.bak.codex-* ]] && continue
     link_file "$file" "$HOME/$filename"
 done
 

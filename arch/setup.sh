@@ -48,6 +48,18 @@ ln -sf "$DOTFILES_DIR/home/.vimrc"      "$HOME/.vimrc"
 mkdir -p "$HOME/.config"
 ln -sf "$DOTFILES_DIR/config/nvim"      "$HOME/.config/nvim"
 
+# 桌面环境（niri 滚动平铺 + DMS shell + kitty 终端）
+# 用 -sfn：当目标已是链接目录时，替换链接本身而非穿透写入
+ln -sfn "$DOTFILES_DIR/arch/config/niri"   "$HOME/.config/niri"
+ln -sfn "$DOTFILES_DIR/arch/config/kitty"  "$HOME/.config/kitty"
+
+# DMS：保留原目录（DMS 启动时会写 .firstlaunch 等运行时标记），只链具体配置文件
+mkdir -p "$HOME/.config/DankMaterialShell"
+ln -sf "$DOTFILES_DIR/arch/config/DankMaterialShell/settings.json" \
+       "$HOME/.config/DankMaterialShell/settings.json"
+ln -sf "$DOTFILES_DIR/arch/config/DankMaterialShell/firefox.css" \
+       "$HOME/.config/DankMaterialShell/firefox.css"
+
 echo "==> [6/6] 设置默认 Shell 为 zsh..."
 chsh -s "$(which zsh)"
 
