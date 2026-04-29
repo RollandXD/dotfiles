@@ -1,14 +1,28 @@
 [core]
     pager = delta
+	quotepath = false
 
 [interactive]
     diffFilter = delta --color-only
 
 [delta]
-    navigate = true    # 允许用 n/N 跳转修改点
-    light = false      # 我们是暗色主题
+    navigate = true
+    light = false
     line-numbers = true
-    side-by-side = true # 并排显示！最帅的功能！
+    side-by-side = true
+    syntax-theme = Catppuccin Mocha
+    minus-style = syntax "#53394d"
+    minus-emph-style = syntax "#78425f"
+    plus-style = syntax "#404f4a"
+    plus-emph-style = syntax "#4f6b58"
+    map-styles = bold purple => syntax "#494060", bold cyan => syntax "#405060"
+    line-numbers-minus-style = "#f38ba8"
+    line-numbers-plus-style = "#a6e3a1"
+    line-numbers-zero-style = "#6c7086"
+    hunk-header-decoration-style = box ul
+    hunk-header-style = file line-number syntax bold
+    file-style = "#cdd6f4" bold
+    file-decoration-style = "#89b4fa" ul ol
 
 [merge]
     conflictstyle = diff3

@@ -133,6 +133,21 @@ source /usr/share/fzf/key-bindings.zsh
 # fzf default options with bat preview
 export FZF_DEFAULT_OPTS="--height 40% --layout=reverse --border --preview 'bat --style=numbers --color=always --line-range :500 {}'"
 
+# fzf 全局搜索（从 $HOME 开始，不限于当前目录）
+# Ctrl+T 搜索文件，Alt+C 搜索目录
+export FZF_CTRL_T_COMMAND="fd --type f --hidden --exclude .git . $HOME"
+export FZF_ALT_C_COMMAND="fd --type d --hidden --exclude .git . $HOME"
+
+# yazi：退出后自动 cd 到浏览的目录（按 Q 退出则不改变目录）
+function y() {
+    local tmp="$(mktemp -t "yazi-cwd.XXXXXX")"
+    yazi "$@" --cwd-file="$tmp"
+    if cwd="$(cat -- "$tmp")" && [ -n "$cwd" ] && [ "$cwd" != "$PWD" ]; then
+        builtin cd -- "$cwd"
+    fi
+    rm -f -- "$tmp"
+}
+
 # PATH
 export PATH="$HOME/.local/bin:$HOME/bin:$PATH"
 
@@ -146,3 +161,21 @@ export VISUAL=nvim
 # Java 21 (Arch package: jdk21-openjdk)
 export JAVA_HOME=/usr/lib/jvm/java-21-openjdk
 export PATH=$JAVA_HOME/bin:$PATH
+export PATH="$HOME/.npm-global/bin:$PATH"
+export PATH="$(npm prefix -g)/bin:$PATH"
+
+# 将 nvim 设置为默认编辑器（包括 sudo 编辑）
+export EDITOR=nvim
+export VISUAL=nvim
+export SUDO_EDITOR=nvim
+
+# bun completions
+[ -s "/home/rolland/.bun/_bun" ] && source "/home/rolland/.bun/_bun"
+
+# bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
+
+# bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
