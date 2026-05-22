@@ -34,8 +34,6 @@
 | `<leader>j` | `n` | 合并当前行和下一行 | `config/keymaps.lua` |
 | `H` | `n` | 跳到行首非空白字符 | `config/keymaps.lua` |
 | `L` | `n` | 跳到行尾 | `config/keymaps.lua` |
-| `<C-h>` | `n` | 移动到左侧窗口 | `config/keymaps.lua` |
-| `<C-l>` | `n` | 移动到右侧窗口 | `config/keymaps.lua` |
 | `<leader>=` | `n` | 均分所有窗口 | `config/keymaps.lua` |
 | `<leader>-` | `n` | 减小窗口高度 | `config/keymaps.lua` |
 | `<leader>+` | `n` | 增大窗口高度 | `config/keymaps.lua` |
@@ -55,6 +53,10 @@
 | 按键 | 模式 | 功能 | 插件 |
 | --- | --- | --- | --- |
 | `<leader>m` | `n` | 打开 Mason | `mason.nvim` |
+| `<C-h>` | `n` | 移动到左侧 Neovim 窗口 / tmux pane | `vim-tmux-navigator` |
+| `<C-j>` | `n` | 移动到下方 Neovim 窗口 / tmux pane | `vim-tmux-navigator` |
+| `<C-k>` | `n` | 移动到上方 Neovim 窗口 / tmux pane | `vim-tmux-navigator` |
+| `<C-l>` | `n` | 移动到右侧 Neovim 窗口 / tmux pane | `vim-tmux-navigator` |
 | `<leader>e` | `n` | 切换文件树 | `neo-tree.nvim` |
 | `<leader>s` | `n`,`x` | 打开搜索替换面板（字面量） | `grug-far.nvim` |
 | `<leader>S` | `n` | 打开搜索替换面板（正则） | `grug-far.nvim` |
