@@ -41,7 +41,7 @@ map('n', 'H', '^', { desc = "移动到行首（非空白字符）" })
 map('n', 'L', '$', { desc = "移动到行尾" })
 
 -- ========== 窗口导航 ==========
--- Ctrl-hjkl 由 vim-tmux-navigator 接管，实现 Neovim/tmux 无缝移动。
+-- Alt-hjkl 由 vim-tmux-navigator 接管，实现 Neovim/tmux 无缝移动。
 
 -- ========== 调整分屏大小 ==========
 map('n', '<Leader>=', '<C-w>=', { desc = "均分所有窗口" })
@@ -58,9 +58,7 @@ map('v', '<', '<gv', { desc = "左缩进并保持选中" })
 map('v', '>', '>gv', { desc = "右缩进并保持选中" })
 -- 替换选区时不污染默认寄存器
 map('v', 'p', '"_dP', { desc = "替换选区并保留寄存器" })
--- Alt-j/k 在常用模式下都可移动行或选中块
-map('n', '<A-j>', ':m .+1<CR>==', { desc = "向下移动当前行" })
-map('n', '<A-k>', ':m .-2<CR>==', { desc = "向上移动当前行" })
+-- Alt-j/k 在插入/可视模式下移动行；普通模式留给 vim-tmux-navigator。
 map('i', '<A-j>', '<Esc>:m .+1<CR>==gi', { desc = "向下移动当前行" })
 map('i', '<A-k>', '<Esc>:m .-2<CR>==gi', { desc = "向上移动当前行" })
 map('v', '<A-j>', ":m '>+1<CR>gv=gv", { desc = "向下移动选中行" })

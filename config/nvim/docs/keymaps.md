@@ -53,10 +53,10 @@
 | 按键 | 模式 | 功能 | 插件 |
 | --- | --- | --- | --- |
 | `<leader>m` | `n` | 打开 Mason | `mason.nvim` |
-| `<C-h>` | `n` | 移动到左侧 Neovim 窗口 / tmux pane | `vim-tmux-navigator` |
-| `<C-j>` | `n` | 移动到下方 Neovim 窗口 / tmux pane | `vim-tmux-navigator` |
-| `<C-k>` | `n` | 移动到上方 Neovim 窗口 / tmux pane | `vim-tmux-navigator` |
-| `<C-l>` | `n` | 移动到右侧 Neovim 窗口 / tmux pane | `vim-tmux-navigator` |
+| `<A-h>` | `n` | 移动到左侧 Neovim 窗口 / tmux pane | `vim-tmux-navigator` |
+| `<A-j>` | `n` | 移动到下方 Neovim 窗口 / tmux pane | `vim-tmux-navigator` |
+| `<A-k>` | `n` | 移动到上方 Neovim 窗口 / tmux pane | `vim-tmux-navigator` |
+| `<A-l>` | `n` | 移动到右侧 Neovim 窗口 / tmux pane | `vim-tmux-navigator` |
 | `<leader>e` | `n` | 切换文件树 | `neo-tree.nvim` |
 | `<leader>s` | `n`,`x` | 打开搜索替换面板（字面量） | `grug-far.nvim` |
 | `<leader>S` | `n` | 打开搜索替换面板（正则） | `grug-far.nvim` |

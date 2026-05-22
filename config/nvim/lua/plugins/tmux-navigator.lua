@@ -4,13 +4,13 @@ return {
   "christoomey/vim-tmux-navigator",
   lazy = false,
   init = function()
-    -- 手动声明映射，避免覆盖 Snacks 的 <C-\> 浮动终端。
+    -- 手动声明映射，释放 Ctrl-hjkl 给编辑器和其他插件。
     vim.g.tmux_navigator_no_mappings = 1
   end,
   keys = {
-    { "<C-h>", "<cmd>TmuxNavigateLeft<cr>", desc = "移动到左侧窗口/pane" },
-    { "<C-j>", "<cmd>TmuxNavigateDown<cr>", desc = "移动到下方窗口/pane" },
-    { "<C-k>", "<cmd>TmuxNavigateUp<cr>", desc = "移动到上方窗口/pane" },
-    { "<C-l>", "<cmd>TmuxNavigateRight<cr>", desc = "移动到右侧窗口/pane" },
+    { "<A-h>", "<cmd>TmuxNavigateLeft<cr>", desc = "移动到左侧窗口/pane" },
+    { "<A-j>", "<cmd>TmuxNavigateDown<cr>", desc = "移动到下方窗口/pane" },
+    { "<A-k>", "<cmd>TmuxNavigateUp<cr>", desc = "移动到上方窗口/pane" },
+    { "<A-l>", "<cmd>TmuxNavigateRight<cr>", desc = "移动到右侧窗口/pane" },
   },
 }
