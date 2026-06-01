@@ -24,10 +24,10 @@ binds {
     // settings
     Mod+F2 hotkey-overlay-title="设置 Settings" { spawn-sh "dms ipc call settings focusOrToggle";}
     Mod+F3 hotkey-overlay-title="录屏 Screen record" { spawn "~/.local/bin/wf-recorder-menu";}
-    // 文档管理器。如果有thunar的话会优先打开thunar，没有的话会打开nautilus
-    Mod+E hotkey-overlay-title="文档管理器 Filemanager" { spawn-sh "thunar || env GSK_RENDERER=gl GTK_IM_MODULE=fcitx  nautilus"; }
-    // 另一个打开nautilus的快捷键，主要是为了在同时安装thunar和nautilus的情况下打开naultilus
-    Mod+Alt+E hotkey-overlay-title=null {spawn "env" "GSK_RENDERER=gl" "GTK_IM_MODULE=fcitx"  "nautilus" "--new-window";}
+    // 文档管理器：统一使用 Thunar，适配 niri/GTK 会话
+    Mod+E hotkey-overlay-title="文档管理器 Filemanager" { spawn "thunar"; }
+    // Thunar 新窗口入口
+    Mod+Alt+E hotkey-overlay-title=null { spawn "thunar" "--window"; }
     Mod+Z hotkey-overlay-title="程序菜单 Applauncher" { spawn-sh "dms ipc call spotlight toggle || fuzzel"; }
     // dms 壁纸选择
     Mod+Alt+W hotkey-overlay-title="壁纸切换 Wallpaper" { spawn "dms" "ipc" "call" "dankdash" "wallpaper";}

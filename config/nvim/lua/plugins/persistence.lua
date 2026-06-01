@@ -10,8 +10,8 @@ return {
     branch = true,      -- 按 Git 分支区分会话
   },
   keys = {
-    { "<leader>ps", function() require("persistence").load() end, desc = "恢复当前目录会话" },
-    { "<leader>pl", function() require("persistence").load({ last = true }) end, desc = "恢复最近会话" },
-    { "<leader>pd", function() require("persistence").stop() end, desc = "不保存退出" },
+    { "<leader>Ps", function() require("persistence").load() end, desc = "恢复当前目录会话" },
+    { "<leader>Pl", function() require("persistence").load({ last = true }) end, desc = "恢复最近会话" },
+    { "<leader>Pd", function() require("persistence").stop() end, desc = "不保存退出" },
   },
 }

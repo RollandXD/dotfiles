@@ -6,6 +6,7 @@ return {
   event = { "BufReadPost", "BufWritePost", "InsertLeave" },
   config = function()
     local lint = require("lint")
+    local python_tools = require("config.python")
 
     -- 按文件类型配置 Linter
     lint.linters_by_ft = {
@@ -16,6 +17,11 @@ return {
       -- markdown = { "markdownlint" },
       -- lua = { "luacheck" },
     }
+
+    -- Python 项目优先使用本地 .venv/bin/ruff，避免 Neovim 没激活 shell 时找不到 ruff
+    lint.linters.ruff.cmd = function()
+      return python_tools.executable("ruff")
+    end
 
     -- 自动触发 Lint
     vim.api.nvim_create_autocmd({ "BufWritePost", "BufReadPost", "InsertLeave" }, {

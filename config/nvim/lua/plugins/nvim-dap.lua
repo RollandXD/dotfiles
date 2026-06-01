@@ -42,6 +42,7 @@ return {
 
     config = function()
       local dap = require('dap')
+      local python_tools = require("config.python")
 
       -- 配置断点图标（使用 Unicode 字符）
       vim.fn.sign_define('DapBreakpoint', {
@@ -83,6 +84,9 @@ return {
           type = "python",
           request = "launch",
           program = "${file}",
+          pythonPath = function()
+            return python_tools.python_path()
+          end,
           console = "integratedTerminal",
         },
         {
@@ -92,6 +96,9 @@ return {
           module = function()
             return vim.fn.input("模块名: ")
           end,
+          pythonPath = function()
+            return python_tools.python_path()
+          end,
           console = "integratedTerminal",
         },
         {
@@ -99,6 +106,9 @@ return {
           type = "python",
           request = "launch",
           program = "${file}",
+          pythonPath = function()
+            return python_tools.python_path()
+          end,
           args = function()
             local args_str = vim.fn.input("运行参数: ", "")
             return args_str ~= "" and require("dap.utils").splitstr(args_str) or {}

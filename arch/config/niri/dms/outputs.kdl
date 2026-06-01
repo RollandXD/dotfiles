@@ -2,19 +2,19 @@
 
 output "DP-3" {
     mode "2560x1440@60.000"
-    scale 1
+    scale 1.25
     position x=0 y=0
 }
 
 output "eDP-1" {
     mode "2560x1600@240.000"
     scale 1.75
-    position x=213 y=85
+    position x=2048 y=0
 }
 
 output "DP-1" {
     mode "2560x1440@300.000"
     scale 1.25
-    position x=1676 y=0
+    position x=3511 y=0
 }
 

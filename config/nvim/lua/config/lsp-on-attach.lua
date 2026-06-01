@@ -46,7 +46,7 @@ function M.on_attach(client, bufnr)
     vim.tbl_extend("force", opts, { desc = "显示参数提示" }))
 
   -- Inlay Hints（参数名、推导类型）
-  if client.supports_method("textDocument/inlayHint") then
+  if client:supports_method("textDocument/inlayHint") then
     vim.lsp.inlay_hint.enable(true, { bufnr = bufnr })
   end
 

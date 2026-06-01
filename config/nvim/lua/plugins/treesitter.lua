@@ -1,34 +1,35 @@
 return {
   "nvim-treesitter/nvim-treesitter",
   build = ":TSUpdate",  -- 安装后自动更新解析器
-  event = { "BufReadPost", "BufNewFile" },  -- 打开文件时加载
+  lazy = false,          -- 新版 nvim-treesitter 官方建议不要 lazy-load
 
   config = function()
-    require("nvim-treesitter").setup({
-      -- 自动安装的语言解析器
-      ensure_installed = { "lua", "vim", "vimdoc", "c", "cpp", "cmake", "python", "markdown", "markdown_inline", "yaml" },  -- 基础 + C/C++ + Python + Markdown
+    local treesitter = require("nvim-treesitter")
+    local parsers = {
+      "lua",
+      "vim",
+      "vimdoc",
+      "c",
+      "cpp",
+      "cmake",
+      "python",
+      "markdown",
+      "markdown_inline",
+      "yaml",
+      "toml",
+    }
 
-      -- 自动安装（打开文件时自动安装对应语言）
-      auto_install = true,
+    treesitter.setup()
+    treesitter.install(parsers)
 
-      -- 语法高亮
-      highlight = {
-        enable = true,
-        additional_vim_regex_highlighting = false,
-      },
-
-      -- 代码缩进
-      indent = { enable = true },
-
-      -- 增量选择（使用不冲突的快捷键）
-      incremental_selection = {
-        enable = true,
-        keymaps = {
-          init_selection = "gnn",       -- 开始选择（改为 gnn，避免占用回车键）
-          node_incremental = "<C-space>",     -- 扩大选择
-          node_decremental = "grm",     -- 缩小选择
-        },
-      },
+    vim.api.nvim_create_autocmd("FileType", {
+      group = vim.api.nvim_create_augroup("UserTreesitterStart", { clear = true }),
+      pattern = { "lua", "vim", "help", "c", "cpp", "cmake", "python", "markdown", "yaml", "toml" },
+      callback = function(args)
+        if pcall(vim.treesitter.start, args.buf) then
+          vim.bo[args.buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+        end
+      end,
     })
   end,
 }

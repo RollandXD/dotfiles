@@ -74,3 +74,12 @@ vim.api.nvim_create_autocmd("BufReadPost", {
     end
   end,
 })
+
+-- Python 项目优先使用仓库内 .venv，确保 ruff / pytest / mypy 与 uv 环境一致
+vim.api.nvim_create_autocmd("FileType", {
+  group = augroup,
+  pattern = "python",
+  callback = function(args)
+    require("config.python").activate_project_venv(args.buf)
+  end,
+})

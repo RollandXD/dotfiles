@@ -15,23 +15,45 @@ return {
     },
   },
 
-  opts = {
-    notify_on_error = true,
-    format_on_save = function(bufnr)
+  opts = function()
+    local python_tools = require("config.python")
+
+    return {
+      notify_on_error = true,
+      format_on_save = function(bufnr)
       -- 仅对 C/C++ 文件保存时自动格式化
       local ft = vim.bo[bufnr].filetype
       if vim.tbl_contains({ "c", "cpp", "objc", "objcpp", "python" }, ft) then
         return { timeout_ms = 500, lsp_format = "fallback" }
       end
-    end,
-    formatters_by_ft = {
-      c = { "clang-format" },
-      cpp = { "clang-format" },
-      objc = { "clang-format" },
-      objcpp = { "clang-format" },
-      json = { "prettier" },
-      jsonc = { "prettier" },
-      python = { "ruff_format", "ruff_organize" },
-    },
-  },
+      end,
+      formatters_by_ft = {
+        c = { "clang-format" },
+        cpp = { "clang-format" },
+        objc = { "clang-format" },
+        objcpp = { "clang-format" },
+        json = { "prettier" },
+        jsonc = { "prettier" },
+        python = { "ruff_format", "ruff_organize" },
+      },
+      formatters = {
+        ruff_format = {
+          command = function()
+            return python_tools.executable("ruff")
+          end,
+          env = function()
+            return python_tools.env()
+          end,
+        },
+        ruff_organize = {
+          command = function()
+            return python_tools.executable("ruff")
+          end,
+          env = function()
+            return python_tools.env()
+          end,
+        },
+      },
+    }
+  end,
 }

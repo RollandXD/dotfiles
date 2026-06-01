@@ -57,17 +57,44 @@
 | `<A-j>` | `n` | 移动到下方 Neovim 窗口 / tmux pane | `vim-tmux-navigator` |
 | `<A-k>` | `n` | 移动到上方 Neovim 窗口 / tmux pane | `vim-tmux-navigator` |
 | `<A-l>` | `n` | 移动到右侧 Neovim 窗口 / tmux pane | `vim-tmux-navigator` |
-| `<leader>e` | `n` | 切换文件树 | `neo-tree.nvim` |
+| `<leader>e` | `n` | 切换文件树 | `snacks.nvim` |
 | `<leader>s` | `n`,`x` | 打开搜索替换面板（字面量） | `grug-far.nvim` |
 | `<leader>S` | `n` | 打开搜索替换面板（正则） | `grug-far.nvim` |
-| `<leader>ff` | `n` | 搜索文件 | `telescope.nvim` |
-| `<leader>fg` | `n` | 全局搜索文本 | `telescope.nvim` |
-| `<leader>fb` | `n` | Buffer 列表 | `telescope.nvim` |
-| `<leader>fh` | `n` | 命令历史 | `telescope.nvim` |
-| `<leader>fH` | `n` | 搜索帮助文档 | `telescope.nvim` |
-| `<leader>fr` | `n` | 最近文件 | `telescope.nvim` |
-| `<leader>fk` | `n` | 快捷键列表 | `telescope.nvim` |
+| `<leader>ff` | `n` | 搜索文件 | `snacks.nvim` |
+| `<leader>fg` | `n` | 全局搜索文本 | `snacks.nvim` |
+| `<leader>fb` | `n` | Buffer 列表 | `snacks.nvim` |
+| `<leader>fh` | `n` | 命令历史 | `snacks.nvim` |
+| `<leader>fH` | `n` | 搜索帮助文档 | `snacks.nvim` |
+| `<leader>fr` | `n` | 最近文件 | `snacks.nvim` |
+| `<leader>fk` | `n` | 快捷键列表 | `snacks.nvim` |
 | `<leader>cf` | `n` | 格式化代码 | `conform.nvim` |
+| `<leader>aa` | `n` | 接受 Claude Diff | `claudecode.nvim` |
+| `<leader>ab` | `n` | 把当前 Buffer 加入 Claude 上下文 | `claudecode.nvim` |
+| `<leader>ac` | `n` | 打开/关闭 Claude Code | `claudecode.nvim` |
+| `<leader>aC` | `n` | 继续 Claude 会话 | `claudecode.nvim` |
+| `<leader>ad` | `n` | 拒绝 Claude Diff | `claudecode.nvim` |
+| `<leader>af` | `n` | 聚焦 Claude Code | `claudecode.nvim` |
+| `<leader>am` | `n` | 选择 Claude 模型 | `claudecode.nvim` |
+| `<leader>ar` | `n` | 恢复 Claude 会话 | `claudecode.nvim` |
+| `<leader>as` | `v` | 把选区发送给 Claude | `claudecode.nvim` |
+| `<leader>ll` | `n` | 标记/取消标记当前文件 | `grapple.nvim` |
+| `<leader>lt` | `n` | 打开 Grapple 标签管理窗口 | `grapple.nvim` |
+| `<leader>1`-`<leader>9` | `n` | 跳转到对应 Grapple 标签 | `grapple.nvim` |
+| `<leader>pv` | `n` | 选择 Python 虚拟环境 | `venv-selector.nvim` |
+| `<leader>pt` | `n` | 运行当前 Python 测试 | `neotest` |
+| `<leader>pT` | `n` | 运行当前文件测试 | `neotest` |
+| `<leader>pl` | `n` | 重跑上次测试 | `neotest` |
+| `<leader>pd` | `n` | 调试当前测试 | `neotest` + `nvim-dap` |
+| `<leader>ps` | `n` | 切换测试结构面板 | `neotest` |
+| `<leader>pO` | `n` | 切换测试输出面板 | `neotest` |
+| `<leader>po` | `n` | 切换项目任务面板 | `overseer.nvim` |
+| `<leader>pa` | `n` | 运行全部测试 | `overseer.nvim` |
+| `<leader>pm` | `n` | 运行 mypy src | `overseer.nvim` |
+| `<leader>pr` | `n` | Ruff 检查 | `overseer.nvim` |
+| `<leader>pR` | `n` | Ruff 自动修复 | `overseer.nvim` |
+| `<leader>pf` | `n` | Ruff 格式检查 | `overseer.nvim` |
+| `<leader>pc` | `n` | 运行提交前检查 | `overseer.nvim` |
+| `<leader>pC` | `n` | 运行 pre-commit 全量检查 | `overseer.nvim` |
 | `<leader>cc` | `n` | CMake Configure | `cmake-tools.nvim` |
 | `<leader>cb` | `n` | CMake Build | `cmake-tools.nvim` |
 | `<leader>cr` | `n` | CMake Run | `cmake-tools.nvim` |
@@ -75,9 +102,9 @@
 | `<leader>cx` | `n` | 选择 CMake configure preset | `cmake-tools.nvim` |
 | `<leader>cp` | `n` | 选择 CMake build preset | `cmake-tools.nvim` |
 | `<leader>cs` | `n` | 停止 CMake | `cmake-tools.nvim` |
-| `<leader>gg` | `n` | 打开 LazyGit | `lazygit.nvim` |
-| `<leader>gG` | `n` | 用 LazyGit 打开当前文件 | `lazygit.nvim` |
-| `<leader>gc` | `n` | LazyGit Commits | `lazygit.nvim` |
+| `<leader>gg` | `n` | 打开 LazyGit | `snacks.nvim` |
+| `<leader>gG` | `n` | 用 LazyGit 打开当前文件 | `snacks.nvim` |
+| `<leader>gc` | `n` | LazyGit Commits | `snacks.nvim` |
 | `<leader>gd` | `n` | 打开 Diffview | `diffview.nvim` |
 | `<leader>gD` | `n` | 关闭 Diffview | `diffview.nvim` |
 | `<leader>gh` | `n` | 查看当前文件历史 | `diffview.nvim` |
@@ -136,17 +163,18 @@
 
 ## 补全与选择相关
 
-### nvim-cmp
+### blink.cmp
 
 | 按键 | 模式 | 功能 |
 | --- | --- | --- |
 | `<C-b>` | `i`,`s` | 文档向上滚动 |
 | `<C-f>` | `i`,`s` | 文档向下滚动 |
-| `<C-p>` | `i`,`s` | 手动触发补全 |
-| `<C-e>` | `i`,`s` | 关闭补全 |
-| `<CR>` | `i`,`s` | 确认当前补全项 |
-| `<Tab>` | `i`,`s` | 选择下一个补全项，或展开/跳转 snippet |
-| `<S-Tab>` | `i`,`s` | 选择上一个补全项，或反向跳转 snippet |
+| `<C-space>` | `i`,`s` | 手动触发补全 |
+| `<C-n>` | `i`,`s` | 选择下一个补全项 |
+| `<C-p>` | `i`,`s` | 选择上一个补全项 |
+| `<C-e>` | `i`,`s` | 关闭补全菜单 |
+| `<Tab>` | `i`,`s` | 选中并确认补全项，或跳转 snippet |
+| `<S-Tab>` | `i`,`s` | snippet 反向跳转 |
 
 ### lsp_signature.nvim
 
@@ -192,12 +220,13 @@
 | 按键 | 模式 | 功能 |
 | --- | --- | --- |
 | `gd` | `n` | 跳转到定义 |
-| `gr` | `n` | 查找引用 |
+| `grr` | `n` | 查找引用 |
 | `gh` | `n` | 显示悬浮信息 |
-| `<leader>ca` | `n` | 代码操作 |
+| `gra` | `n`,`v` | 代码操作 |
+| `grn` | `n` | 重命名符号（预览） |
+| `gri` | `n` | 查找实现 |
 | `<leader>ch` | `n` | 切换头/源文件（clangd） |
 | `<leader>ci` | `n` | 为声明写入 `.cpp` 实现骨架 |
-| `<leader>rn` | `n` | 重命名符号 |
 
 ### Java 文件中（`nvim-jdtls`）
 

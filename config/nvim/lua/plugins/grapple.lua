@@ -15,8 +15,8 @@ return {
       quick_select = "1234567890", -- 快速选择键
     },
     keys = {
-      { "<leader>a", "<cmd>Grapple toggle<cr>", desc = "标记/取消标记文件" },
-      { "<leader>A", "<cmd>Grapple toggle_tags<cr>", desc = "标签管理窗口" },
+      { "<leader>ll", "<cmd>Grapple toggle<cr>", desc = "标记/取消标记文件" },
+      { "<leader>lt", "<cmd>Grapple toggle_tags<cr>", desc = "标签管理窗口" },
       { "<leader>1", "<cmd>Grapple select index=1<cr>", desc = "跳转标签 1" },
       { "<leader>2", "<cmd>Grapple select index=2<cr>", desc = "跳转标签 2" },
       { "<leader>3", "<cmd>Grapple select index=3<cr>", desc = "跳转标签 3" },
