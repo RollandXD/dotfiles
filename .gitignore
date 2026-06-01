@@ -14,8 +14,12 @@
 *.zwc
 .zcompdump*
 
-# Claude 认证信息
+# Claude 认证信息与会话数据（含 worktrees、jobs、session token 等）
 .claude.json
+.claude/
+
+# 编辑器日志
+*.log
 
 # 系统文件
 .DS_Store
