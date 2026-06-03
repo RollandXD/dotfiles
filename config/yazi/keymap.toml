@@ -6,11 +6,11 @@ on   = "<C-y>"
 run  = "shell -- /home/rolland/.config/yazi/reveal.sh %h"
 desc = "在文件管理器中打开并选中（方便拖拽）"
 
-# 智能 Enter：目录则进入，文件则打开
+# l 只进目录，文件不动（用 o 打开文件）
 [[mgr.prepend_keymap]]
 on   = "l"
-run  = "plugin smart-enter"
-desc = "智能进入/打开"
+run  = "enter"
+desc = "进入目录"
 
 # 快速跳转到首字母匹配的文件
 [[mgr.prepend_keymap]]

@@ -1,5 +1,6 @@
 # ya pkg 管理的插件不入库，通过 ya pkg install 还原
 plugins/*/
 flavors/*/
-# 保留 package.toml（锁文件）和本地自写插件
+# 例外：锁文件，以及改过源码、不能靠 ya pkg 还原的本地插件
 !package.toml
+!plugins/office.yazi/

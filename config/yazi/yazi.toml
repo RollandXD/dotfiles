@@ -28,48 +28,33 @@ run = 'piper -- eza -TL=3 --color=always --icons=always --group-directories-firs
 url = "*.md"
 run = 'piper -- CLICOLOR_FORCE=1 glow -w=$w -s=dark "$1"'
 
-# PDF 预览（pdftoppm 已安装）
+# PDF 预览
 [[plugin.prepend_previewers]]
 mime = "application/pdf"
 run  = "pdf"
 
-# Office 文件预览（office.yazi：只转当前页 + 后台预加载）
+# Office 文件预览（office.yazi）
+# 用 url 匹配更可靠：实际 MIME 带 vnd. 前缀，README 里的 MIME 规则有误
 [[plugin.prepend_preloaders]]
-mime = "application/openxmlformats-officedocument.*"
-run  = "office"
-
-[[plugin.prepend_preloaders]]
-mime = "application/oasis.opendocument.*"
-run  = "office"
-
-[[plugin.prepend_preloaders]]
-mime = "application/ms-*"
-run  = "office"
+url = "*.{docx,xlsx,pptx,odt,ods,odp}"
+run = "office"
 
 [[plugin.prepend_preloaders]]
 mime = "application/msword"
 run  = "office"
 
 [[plugin.prepend_preloaders]]
-name = "*.docx"
+mime = "application/vnd.ms-*"
 run  = "office"
 
 [[plugin.prepend_previewers]]
-mime = "application/openxmlformats-officedocument.*"
-run  = "office"
-
-[[plugin.prepend_previewers]]
-mime = "application/oasis.opendocument.*"
-run  = "office"
-
-[[plugin.prepend_previewers]]
-mime = "application/ms-*"
-run  = "office"
+url = "*.{docx,xlsx,pptx,odt,ods,odp}"
+run = "office"
 
 [[plugin.prepend_previewers]]
 mime = "application/msword"
 run  = "office"
 
 [[plugin.prepend_previewers]]
-name = "*.docx"
+mime = "application/vnd.ms-*"
 run  = "office"
