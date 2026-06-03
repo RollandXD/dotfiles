@@ -8,6 +8,7 @@ deps = [
   { use = "yazi-rs/plugins:smart-filter", rev = "598cdb671401574ac27aeee257e2f3b0c80610a1" },
   { use = "yazi-rs/plugins:zoom",         rev = "598cdb671401574ac27aeee257e2f3b0c80610a1" },
   { use = "yazi-rs/plugins:piper",        rev = "598cdb671401574ac27aeee257e2f3b0c80610a1" },
+  { use = "macydnah/office",              rev = "41ebef8be9dded98b5179e8af65be71b30a1ac4d" },
 ]
 
 [flavor]

@@ -3,4 +3,3 @@ plugins/*/
 flavors/*/
 # 保留 package.toml（锁文件）和本地自写插件
 !package.toml
-!plugins/pptx.yazi/

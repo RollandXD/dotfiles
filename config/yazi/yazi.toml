@@ -33,17 +33,43 @@ run = 'piper -- CLICOLOR_FORCE=1 glow -w=$w -s=dark "$1"'
 mime = "application/pdf"
 run  = "pdf"
 
-# Word 预览（pandoc 已安装）
-[[plugin.prepend_previewers]]
-url = "*.{docx,odt}"
-run = 'piper -- pandoc -t plain "$1"'
+# Office 文件预览（office.yazi：只转当前页 + 后台预加载）
+[[plugin.prepend_preloaders]]
+mime = "application/openxmlformats-officedocument.*"
+run  = "office"
 
-# Excel 预览（纯 Python 标准库）
-[[plugin.prepend_previewers]]
-url = "*.xlsx"
-run = 'piper -- python3 /home/rolland/.config/yazi/scripts/preview-xlsx.py "$1"'
+[[plugin.prepend_preloaders]]
+mime = "application/oasis.opendocument.*"
+run  = "office"
 
-# PPT 预览（LibreOffice 渲染第一页，任何 pptx/ppt/odp 都能预览）
+[[plugin.prepend_preloaders]]
+mime = "application/ms-*"
+run  = "office"
+
+[[plugin.prepend_preloaders]]
+mime = "application/msword"
+run  = "office"
+
+[[plugin.prepend_preloaders]]
+name = "*.docx"
+run  = "office"
+
 [[plugin.prepend_previewers]]
-url = "*.{pptx,ppt,odp}"
-run = "pptx"
+mime = "application/openxmlformats-officedocument.*"
+run  = "office"
+
+[[plugin.prepend_previewers]]
+mime = "application/oasis.opendocument.*"
+run  = "office"
+
+[[plugin.prepend_previewers]]
+mime = "application/ms-*"
+run  = "office"
+
+[[plugin.prepend_previewers]]
+mime = "application/msword"
+run  = "office"
+
+[[plugin.prepend_previewers]]
+name = "*.docx"
+run  = "office"
