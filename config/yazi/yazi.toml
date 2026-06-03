@@ -23,7 +23,7 @@ group = "git"
 url = "*/"
 run = 'piper -- eza -TL=3 --color=always --icons=always --group-directories-first --no-quotes "$1"'
 
-# markdown 预览（需要 glow：sudo pacman -S glow）
+# markdown 预览（glow）
 [[plugin.prepend_previewers]]
 url = "*.md"
 run = 'piper -- CLICOLOR_FORCE=1 glow -w=$w -s=dark "$1"'
@@ -32,3 +32,18 @@ run = 'piper -- CLICOLOR_FORCE=1 glow -w=$w -s=dark "$1"'
 [[plugin.prepend_previewers]]
 mime = "application/pdf"
 run  = "pdf"
+
+# Word 预览（pandoc 已安装）
+[[plugin.prepend_previewers]]
+url = "*.{docx,odt}"
+run = 'piper -- pandoc -t plain "$1"'
+
+# Excel 预览（纯 Python 标准库）
+[[plugin.prepend_previewers]]
+url = "*.xlsx"
+run = 'piper -- python3 /home/rolland/.config/yazi/scripts/preview-xlsx.py "$1"'
+
+# PPT 预览（LibreOffice 渲染第一页，任何 pptx/ppt/odp 都能预览）
+[[plugin.prepend_previewers]]
+url = "*.{pptx,ppt,odp}"
+run = "pptx"

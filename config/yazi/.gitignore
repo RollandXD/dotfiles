@@ -1,5 +1,6 @@
-# 插件本体不入库，通过 ya pkg install 还原
+# ya pkg 管理的插件不入库，通过 ya pkg install 还原
 plugins/*/
 flavors/*/
-# 但保留 package.toml（锁文件）
+# 保留 package.toml（锁文件）和本地自写插件
 !package.toml
+!plugins/pptx.yazi/
