@@ -144,6 +144,7 @@ done
 
 # ~/.config 下的配置
 link_file "$DOTFILES_DIR/config/nvim" "$HOME/.config/nvim"
+link_file "$DOTFILES_DIR/config/yazi" "$HOME/.config/yazi"
 
 # ============================================================
 # 7. 修复 fzf.zsh 中的硬编码路径

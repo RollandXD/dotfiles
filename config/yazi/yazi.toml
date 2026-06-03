@@ -1,0 +1,34 @@
+[preview]
+max_width  = 1200
+max_height = 1800
+
+[manager]
+linemode = "size"
+
+# git 插件：显示文件 git 状态
+[[plugin.prepend_fetchers]]
+id    = "git"
+url   = "*"
+run   = "git"
+group = "git"
+
+[[plugin.prepend_fetchers]]
+id    = "git"
+url   = "*/"
+run   = "git"
+group = "git"
+
+# eza 目录树预览
+[[plugin.prepend_previewers]]
+url = "*/"
+run = 'piper -- eza -TL=3 --color=always --icons=always --group-directories-first --no-quotes "$1"'
+
+# markdown 预览（需要 glow：sudo pacman -S glow）
+[[plugin.prepend_previewers]]
+url = "*.md"
+run = 'piper -- CLICOLOR_FORCE=1 glow -w=$w -s=dark "$1"'
+
+# PDF 预览（pdftoppm 已安装）
+[[plugin.prepend_previewers]]
+mime = "application/pdf"
+run  = "pdf"

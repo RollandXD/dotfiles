@@ -1,0 +1,42 @@
+# Yazi 26.5.6 自定义键位
+
+# reveal in file manager（方便拖拽到浏览器等）
+[[mgr.prepend_keymap]]
+on   = "<C-y>"
+run  = "shell -- /home/rolland/.config/yazi/reveal.sh %h"
+desc = "在文件管理器中打开并选中（方便拖拽）"
+
+# 智能 Enter：目录则进入，文件则打开
+[[mgr.prepend_keymap]]
+on   = "l"
+run  = "plugin smart-enter"
+desc = "智能进入/打开"
+
+# 快速跳转到首字母匹配的文件
+[[mgr.prepend_keymap]]
+on   = "f"
+run  = "plugin jump-to-char"
+desc = "跳转到字符"
+
+# 边过滤边自动进入唯一目录
+[[mgr.prepend_keymap]]
+on   = "F"
+run  = "plugin smart-filter"
+desc = "智能过滤"
+
+# 只显示 git 改动过的文件
+[[mgr.prepend_keymap]]
+on   = ["g", "c"]
+run  = "plugin vcs-files"
+desc = "只看 git 改动文件"
+
+# 放大/缩小预览图片
+[[mgr.prepend_keymap]]
+on   = "+"
+run  = "plugin zoom 1"
+desc = "放大预览"
+
+[[mgr.prepend_keymap]]
+on   = "-"
+run  = "plugin zoom -1"
+desc = "缩小预览"
