@@ -8,9 +8,16 @@ function M:peek(job)
 		return
 	end
 
+	-- 缓存未命中时先画加载提示，再阻塞转换，避免预览区空白盲等
+	if not fs.cha(cache) then
+		ya.preview_widget(job, ui.Text(
+			ui.Line("  ⏳ 正在渲染预览（LibreOffice）… 首次约 1 秒，之后读缓存秒开"):reverse()
+		):area(job.area):wrap(ui.Wrap.YES))
+	end
+
 	local ok, err = self:preload(job)
 	if not ok or err then
-		return
+		return ya.preview_widget(job, err)
 	end
 
 	ya.sleep(math.max(0, rt.preview.image_delay / 1000 + start - os.clock()))
