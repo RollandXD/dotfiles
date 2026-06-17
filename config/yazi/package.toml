@@ -1,21 +1,39 @@
-# 注意：office.yazi 不在这里管理。
-# 它的源码已本地修改以兼容 yazi 26.x（preview_widget / ya.emit），
-# 直接随 dotfiles 入库（见 plugins/office.yazi/），
-# 不用 ya pkg，避免 `ya pkg upgrade` 拉回上游旧 API 版本覆盖修复。
+[[plugin.deps]]
+use = "yazi-rs/plugins:git"
+rev = "598cdb671401574ac27aeee257e2f3b0c80610a1"
+hash = ""
 
-[plugin]
-deps = [
-  { use = "yazi-rs/plugins:git",          rev = "598cdb671401574ac27aeee257e2f3b0c80610a1" },
-  { use = "yazi-rs/plugins:vcs-files",    rev = "598cdb671401574ac27aeee257e2f3b0c80610a1" },
-  { use = "yazi-rs/plugins:smart-enter",  rev = "598cdb671401574ac27aeee257e2f3b0c80610a1" },
-  { use = "yazi-rs/plugins:full-border",  rev = "598cdb671401574ac27aeee257e2f3b0c80610a1" },
-  { use = "yazi-rs/plugins:jump-to-char", rev = "598cdb671401574ac27aeee257e2f3b0c80610a1" },
-  { use = "yazi-rs/plugins:smart-filter", rev = "598cdb671401574ac27aeee257e2f3b0c80610a1" },
-  { use = "yazi-rs/plugins:zoom",         rev = "598cdb671401574ac27aeee257e2f3b0c80610a1" },
-  { use = "yazi-rs/plugins:piper",        rev = "598cdb671401574ac27aeee257e2f3b0c80610a1" },
-]
+[[plugin.deps]]
+use = "yazi-rs/plugins:vcs-files"
+rev = "598cdb671401574ac27aeee257e2f3b0c80610a1"
+hash = ""
 
-[flavor]
-deps = [
-  { use = "catppuccin/catppuccin-yazi:catppuccin-mocha" },
-]
+[[plugin.deps]]
+use = "yazi-rs/plugins:smart-enter"
+rev = "598cdb671401574ac27aeee257e2f3b0c80610a1"
+hash = ""
+
+[[plugin.deps]]
+use = "yazi-rs/plugins:full-border"
+rev = "598cdb671401574ac27aeee257e2f3b0c80610a1"
+hash = ""
+
+[[plugin.deps]]
+use = "yazi-rs/plugins:jump-to-char"
+rev = "598cdb671401574ac27aeee257e2f3b0c80610a1"
+hash = ""
+
+[[plugin.deps]]
+use = "yazi-rs/plugins:zoom"
+rev = "598cdb671401574ac27aeee257e2f3b0c80610a1"
+hash = ""
+
+[[plugin.deps]]
+use = "yazi-rs/plugins:piper"
+rev = "598cdb671401574ac27aeee257e2f3b0c80610a1"
+hash = ""
+
+[[flavor.deps]]
+use = "catppuccin/catppuccin-yazi:catppuccin-mocha"
+rev = ""
+hash = ""

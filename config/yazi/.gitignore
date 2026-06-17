@@ -4,3 +4,7 @@ flavors/*/
 # 例外：锁文件，以及改过源码、不能靠 ya pkg 还原的本地插件
 !package.toml
 !plugins/office.yazi/
+# yamb：本地改源码兼容 yazi 26.x（ya.hide→ui.hide），同 office.yazi 不靠 ya pkg 还原
+!plugins/yamb.yazi/
+# yamb 书签数据（含绝对路径、运行时变动，不跨机同步）
+bookmark

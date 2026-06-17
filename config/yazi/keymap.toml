@@ -18,11 +18,27 @@ on   = "f"
 run  = "plugin jump-to-char"
 desc = "跳转到字符"
 
-# 边过滤边自动进入唯一目录
+# 过滤文件（原生：边输边过滤，保留智能大小写，不自动进目录，自己按 l/Enter 进）
 [[mgr.prepend_keymap]]
 on   = "F"
-run  = "plugin smart-filter"
-desc = "智能过滤"
+run  = "filter --smart"
+desc = "过滤文件"
+
+# fzf 模糊搜索：键位对齐 shell（Ctrl-T 搜文件 / Alt-C 搜目录），z = 文件+目录一起搜
+[[mgr.prepend_keymap]]
+on   = "<C-t>"
+run  = "plugin fuzzy-nav -- file"
+desc = "fzf 搜文件（对齐 shell Ctrl-T）"
+
+[[mgr.prepend_keymap]]
+on   = "<A-c>"
+run  = "plugin fuzzy-nav -- dir"
+desc = "fzf 搜目录（对齐 shell Alt-C）"
+
+[[mgr.prepend_keymap]]
+on   = "z"
+run  = "plugin fuzzy-nav -- all"
+desc = "fzf 搜文件+目录"
 
 # 只显示 git 改动过的文件
 [[mgr.prepend_keymap]]
@@ -40,3 +56,29 @@ desc = "放大预览"
 on   = "-"
 run  = "plugin zoom -1"
 desc = "缩小预览"
+
+# yamb 书签：运行时打/取消/跳转，g 开头
+[[mgr.prepend_keymap]]
+on   = ["g", "a"]
+run  = "plugin yamb -- save"
+desc = "打书签（命名）"
+
+[[mgr.prepend_keymap]]
+on   = ["g", "j"]
+run  = "plugin yamb -- jump_by_key"
+desc = "按 key 秒跳书签"
+
+[[mgr.prepend_keymap]]
+on   = ["g", "J"]
+run  = "plugin yamb -- jump_by_fzf"
+desc = "fzf 列表跳转书签"
+
+[[mgr.prepend_keymap]]
+on   = ["g", "x"]
+run  = "plugin yamb -- delete_by_fzf"
+desc = "fzf 列表删书签"
+
+[[mgr.prepend_keymap]]
+on   = ["g", "r"]
+run  = "plugin yamb -- rename_by_fzf"
+desc = "fzf 列表重命名书签"
