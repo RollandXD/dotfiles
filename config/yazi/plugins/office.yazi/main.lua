@@ -35,6 +35,10 @@ end
 
 function M:doc2pdf(job)
 	local tmp = "/tmp/yazi-" .. ya.uid() .. "/" .. ya.hash("office.yazi") .. "/"
+	local ok, err = fs.create("dir_all", Url(tmp))
+	if not ok then
+		return nil, Err("Failed to create temporary directory `%s`: %s", tmp, err)
+	end
 
 	--[[	For Future Reference: Regarding `libreoffice` as preconverter
 	  1. It prints errors to stdout (always, doesn't matter if it succeeded or it failed)

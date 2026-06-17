@@ -13,7 +13,7 @@
 > [!TIP]
 > Installing this plugin with `ya` will conveniently clone the plugin from GitHub,
 > copy it to your plugins directory, and update the `package.toml` to lock its version [^1].
-> 
+>
 > To install it with `ya` run:
 > ```sh
 > ya pkg add macydnah/office
@@ -23,7 +23,7 @@
 > ```sh
 > ## For linux and MacOS
 > git clone https://github.com/macydnah/office.yazi.git ~/.config/yazi/plugins/office.yazi
-> 
+>
 > ## For Windows
 > git clone https://github.com/macydnah/office.yazi.git %AppData%\yazi\config\plugins\office.yazi
 > ```
