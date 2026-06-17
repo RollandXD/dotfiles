@@ -45,15 +45,15 @@ binds {
 
     // 切换聚焦
     // super+方向键
-    Mod+Left hotkey-overlay-title=null { focus-column-left; }
-    Mod+Down  { focus-window-down; }
-    Mod+Up    { focus-window-up; }
-    Mod+Right { focus-column-right; }
+    Mod+Left hotkey-overlay-title=null { focus-column-or-monitor-left; }
+    Mod+Down  { focus-window-or-workspace-down; }
+    Mod+Up    { focus-window-or-workspace-up; }
+    Mod+Right { focus-column-or-monitor-right; }
     // super+vim key
-    Mod+H     { focus-column-left; }
-    Mod+J     { focus-window-down; }
-    Mod+K     { focus-window-up; }
-    Mod+L     { focus-column-right; }
+    Mod+H     { focus-column-or-monitor-left; }
+    Mod+J     { focus-window-or-workspace-down; }
+    Mod+K     { focus-window-or-workspace-up; }
+    Mod+L     { focus-column-or-monitor-right; }
 
     // 移动colume（列）
     // super+ctrl+方向键
@@ -61,15 +61,15 @@ binds {
     Mod+Ctrl+Right hotkey-overlay-title=null { move-column-right; }
     // super+ctrl+vimkey
     Mod+Ctrl+H     { move-column-left; }
-    Mod+Ctrl+J     { move-window-down; }
-    Mod+Ctrl+K     { move-window-up; }
+    Mod+Ctrl+J     { move-window-down-or-to-workspace-down; }
+    Mod+Ctrl+K     { move-window-up-or-to-workspace-up; }
     Mod+Ctrl+L     { move-column-right; }
     // super+ctrl+a/d 向左/右移动列
     Mod+Ctrl+A  { move-column-left; }
     Mod+Ctrl+D { move-column-right; }
     // mod+S/W 上下切换窗口
-    Mod+S { move-window-down; }
-    Mod+W { move-window-up; }
+    Mod+S { move-window-down-or-to-workspace-down; }
+    Mod+W { move-window-up-or-to-workspace-up; }
     
     // 切换到第一个colume
     Mod+Home { focus-column-first; }

@@ -149,8 +149,8 @@ export FZF_DEFAULT_OPTS="--tmux center --height 40% --layout=reverse --border \
 
 # fzf 全局搜索（从 $HOME 开始，不限于当前目录）
 # Ctrl+T 搜索文件，Alt+C 搜索目录
-export FZF_CTRL_T_COMMAND="fd --type f --hidden --exclude .git . $HOME"
-export FZF_ALT_C_COMMAND="fd --type d --hidden --exclude .git . $HOME"
+export FZF_CTRL_T_COMMAND="fd --type f --hidden --follow --exclude .git . $HOME"
+export FZF_ALT_C_COMMAND="fd --type d --hidden --follow --exclude .git . $HOME"
 
 # 只有选「文件」时才用 bat 预览（避免 Ctrl-R 把历史命令当文件喂给 bat）
 export FZF_CTRL_T_OPTS="--preview 'bat --style=numbers --color=always --line-range :500 {}'"

@@ -28,4 +28,5 @@ Thumbs.db
 # 编辑器/工具产物
 .nvimlog
 .codex
+*.bak
 *.bak.codex-*

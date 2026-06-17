@@ -341,7 +341,7 @@
   "hideBrightnessSlider": false,
   "notificationTimeoutLow": 5000,
   "notificationTimeoutNormal": 5000,
-  "notificationTimeoutCritical": 0,
+  "notificationTimeoutCritical": 5000,
   "notificationCompactMode": false,
   "notificationPopupPosition": 0,
   "notificationAnimationSpeed": 1,
@@ -352,7 +352,16 @@
   "notificationHistorySaveLow": true,
   "notificationHistorySaveNormal": true,
   "notificationHistorySaveCritical": true,
-  "notificationRules": [],
+  "notificationRules": [
+    {
+      "enabled": true,
+      "field": "appName",
+      "pattern": "Codex CLI",
+      "matchType": "exact",
+      "action": "default",
+      "urgency": "default"
+    }
+  ],
   "osdAlwaysShowValue": false,
   "osdPosition": 5,
   "osdVolumeEnabled": true,

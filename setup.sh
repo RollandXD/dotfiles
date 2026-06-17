@@ -19,6 +19,10 @@ info()    { echo -e "${GREEN}[✓]${NC} $1"; }
 warn()    { echo -e "${YELLOW}[!]${NC} $1"; }
 section() { echo -e "\n${YELLOW}===== $1 =====${NC}"; }
 
+is_arch() {
+    [ -f /etc/arch-release ] || command -v pacman >/dev/null 2>&1
+}
+
 # ---------- 创建符号链接的辅助函数 ----------
 link_file() {
     local src="$1"
@@ -139,12 +143,46 @@ for file in "$DOTFILES_DIR"/home/.*; do
     [[ "$filename" == "." || "$filename" == ".." ]] && continue
     # 跳过 codex 工具留下的备份文件
     [[ "$filename" == *.bak.codex-* ]] && continue
+    # Arch 机器使用 arch/home/.zshrc，避免恢复到 WSL/通用版 zshrc
+    if is_arch && [[ "$filename" == ".zshrc" ]] && [ -f "$DOTFILES_DIR/arch/home/.zshrc" ]; then
+        continue
+    fi
     link_file "$file" "$HOME/$filename"
 done
+
+if is_arch; then
+    link_file "$DOTFILES_DIR/arch/home/.zshrc" "$HOME/.zshrc"
+fi
 
 # ~/.config 下的配置
 link_file "$DOTFILES_DIR/config/nvim" "$HOME/.config/nvim"
 link_file "$DOTFILES_DIR/config/yazi" "$HOME/.config/yazi"
+
+if is_arch; then
+    link_file "$DOTFILES_DIR/arch/config/niri" "$HOME/.config/niri"
+    link_file "$DOTFILES_DIR/arch/config/kitty" "$HOME/.config/kitty"
+    link_file "$DOTFILES_DIR/arch/config/fuzzel" "$HOME/.config/fuzzel"
+    link_file "$DOTFILES_DIR/arch/config/satty" "$HOME/.config/satty"
+    link_file "$DOTFILES_DIR/arch/config/fastfetch" "$HOME/.config/fastfetch"
+    link_file "$DOTFILES_DIR/arch/config/lazygit" "$HOME/.config/lazygit"
+    link_file "$DOTFILES_DIR/arch/config/bat" "$HOME/.config/bat"
+    link_file "$DOTFILES_DIR/arch/config/mpv" "$HOME/.config/mpv"
+    link_file "$DOTFILES_DIR/arch/config/glow" "$HOME/.config/glow"
+    link_file "$DOTFILES_DIR/arch/config/environment.d" "$HOME/.config/environment.d"
+    link_file "$DOTFILES_DIR/arch/config/fontconfig" "$HOME/.config/fontconfig"
+    link_file "$DOTFILES_DIR/arch/config/fcitx5" "$HOME/.config/fcitx5"
+    link_file "$DOTFILES_DIR/arch/config/matugen" "$HOME/.config/matugen"
+    link_file "$DOTFILES_DIR/arch/config/starship.toml" "$HOME/.config/starship.toml"
+    link_file "$DOTFILES_DIR/arch/config/mimeapps.list" "$HOME/.config/mimeapps.list"
+
+    mkdir -p "$HOME/.config/DankMaterialShell"
+    link_file "$DOTFILES_DIR/arch/config/DankMaterialShell/settings.json" "$HOME/.config/DankMaterialShell/settings.json"
+    link_file "$DOTFILES_DIR/arch/config/DankMaterialShell/firefox.css" "$HOME/.config/DankMaterialShell/firefox.css"
+
+    link_file "$DOTFILES_DIR/arch/local/share/konsole/catppuccin.profile" "$HOME/.local/share/konsole/catppuccin.profile"
+    link_file "$DOTFILES_DIR/arch/local/share/konsole/catppuccin-mocha.colorscheme" "$HOME/.local/share/konsole/catppuccin-mocha.colorscheme"
+    link_file "$DOTFILES_DIR/arch/local/share/fcitx5/rime/default.custom.yaml" "$HOME/.local/share/fcitx5/rime/default.custom.yaml"
+fi
 
 # ============================================================
 # 7. 修复 fzf.zsh 中的硬编码路径

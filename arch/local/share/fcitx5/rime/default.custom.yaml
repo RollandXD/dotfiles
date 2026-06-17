@@ -1,0 +1,17 @@
+patch:
+  ascii_composer:
+    good_old_caps_lock: true
+    switch_key:
+      Shift_L: noop
+      Shift_R: noop
+      Control_L: noop
+      Control_R: noop
+      Caps_Lock: noop
+  schema_list:
+    - schema: rime_ice
+    - schema: luna_pinyin_simp
+    - schema: double_pinyin_flypy
+    - schema: bopomofo
+  "menu/page_size": 6
+  key_binder/bindings/@next:
+    { when: composing, accept: "Control+space", send: Escape }
