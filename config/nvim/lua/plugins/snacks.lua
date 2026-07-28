@@ -112,6 +112,22 @@ return {
 
     -- ===== 大文件优化 =====
     bigfile = { enabled = true },
+
+    -- ===== 快速渲染文件（在插件加载完成前就画出内容，加快 nvim foo.cpp）=====
+    quickfile = { enabled = true },
+
+    -- ===== 状态列（整合行号 / 折叠 / gitsigns 标记）=====
+    -- 若不习惯新的行号列外观，把这项改回 false 即可
+    statuscolumn = { enabled = true },
+
+    -- ===== 在浏览器打开当前行对应的 GitHub 链接 =====
+    gitbrowse = { enabled = true },
+
+    -- ===== 临时草稿缓冲区 =====
+    scratch = { enabled = true },
+
+    -- ===== 开关集合（供 <leader>u 系列使用）=====
+    toggle = { enabled = true },
   },
   keys = {
     -- 文件搜索（替代 Telescope）
@@ -146,5 +162,16 @@ return {
       desc = "Dim 聚焦模式（切换）",
     },
     { "<leader>un", function() Snacks.notifier.show_history() end, desc = "通知历史" },
+    -- 在浏览器打开当前行的 GitHub 链接（复用 lazy.lua 里配置的 open-uri.sh）
+    { "<leader>gb", function() Snacks.gitbrowse() end, mode = { "n", "v" }, desc = "在浏览器打开当前行" },
+    -- 草稿缓冲区
+    { "<leader>.", function() Snacks.scratch() end, desc = "草稿缓冲区" },
+    { "<leader>,", function() Snacks.scratch.select() end, desc = "选择草稿" },
+    -- UI 开关（<leader>u 组）
+    { "<leader>us", function() Snacks.toggle.option("spell"):toggle() end, desc = "拼写检查" },
+    { "<leader>uw", function() Snacks.toggle.option("wrap"):toggle() end, desc = "自动换行" },
+    { "<leader>ul", function() Snacks.toggle.option("relativenumber"):toggle() end, desc = "相对行号" },
+    { "<leader>ud", function() Snacks.toggle.diagnostics():toggle() end, desc = "诊断显示" },
+    { "<leader>uc", function() Snacks.toggle.option("conceallevel", { off = 0, on = 2 }):toggle() end, desc = "Conceal 显示" },
   },
 }

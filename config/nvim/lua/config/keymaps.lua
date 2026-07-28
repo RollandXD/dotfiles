@@ -79,7 +79,8 @@ map('n', ']d', function() vim.diagnostic.jump({ count = 1 }) end, { desc = "下�
 map('n', '<Leader>dl', vim.diagnostic.setloclist, { desc = "报错列表" })
 
 -- ========== 缓冲区管理 ==========
-map('n', '<Leader>bd', '<cmd>bdelete<cr>', { desc = "关闭当前缓冲区" })
+-- 用 Snacks.bufdelete 而非原生 :bdelete，关闭缓冲区时保持窗口布局不变
+map('n', '<Leader>bd', function() Snacks.bufdelete() end, { desc = "关闭当前缓冲区" })
 map('n', ']b', '<cmd>bnext<cr>', { desc = "下一个缓冲区" })
 map('n', '[b', '<cmd>bprevious<cr>', { desc = "上一个缓冲区" })
 
