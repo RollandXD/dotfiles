@@ -77,7 +77,7 @@ ZSH_THEME="powerlevel10k/powerlevel10k"
 # Custom plugins may be added to $ZSH_CUSTOM/plugins/
 # Example format: plugins=(rails git textmate ruby lighthouse)
 # Add wisely, as too many plugins slow down shell startup.
-plugins=(git fzf-tab zsh-autosuggestions zsh-syntax-highlighting)
+plugins=(git fzf-tab zsh-autosuggestions zsh-syntax-highlighting z sudo command-not-found)
 
 source $ZSH/oh-my-zsh.sh
 
@@ -208,3 +208,9 @@ function y() {
     fi
     rm -f -- "$tmp"
 }
+
+# opencode
+export PATH=/home/rolland/.opencode/bin:$PATH
+
+# context7 API key（密钥存在仓库外，仅本机可读；见 ~/.agents/README.md）
+[ -r ~/.config/context7/env ] && source ~/.config/context7/env
