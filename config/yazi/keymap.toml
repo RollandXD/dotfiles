@@ -14,13 +14,13 @@ desc = "进入目录"
 
 # 快速跳转到首字母匹配的文件
 [[mgr.prepend_keymap]]
-on   = "f"
+on   = "F"
 run  = "plugin jump-to-char"
 desc = "跳转到字符"
 
 # 过滤文件（原生：边输边过滤，保留智能大小写，不自动进目录，自己按 l/Enter 进）
 [[mgr.prepend_keymap]]
-on   = "F"
+on   = "f"
 run  = "filter --smart"
 desc = "过滤文件"
 
@@ -82,3 +82,14 @@ desc = "fzf 列表删书签"
 on   = ["g", "r"]
 run  = "plugin yamb -- rename_by_fzf"
 desc = "fzf 列表重命名书签"
+
+# 压缩选中文件/文件夹，c 开头（默认 zip，支持指定后缀如 7z/tar.gz）
+[[mgr.prepend_keymap]]
+on   = ["c", "a"]
+run  = "plugin compress"
+desc = "压缩选中文件"
+
+[[mgr.prepend_keymap]]
+on   = ["c", "p"]
+run  = "plugin compress -p"
+desc = "压缩选中文件（加密码）"
