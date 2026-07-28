@@ -75,11 +75,15 @@ vim.api.nvim_create_autocmd("BufReadPost", {
   end,
 })
 
--- Python 项目优先使用仓库内 .venv，确保 ruff / pytest / mypy 与 uv 环境一致
-vim.api.nvim_create_autocmd("FileType", {
+-- Python 项目优先使用仓库内 .venv，确保 ruff / pytest / mypy 与 uv 环境一致。
+-- 必须同时监听 BufEnter：FileType 只在 buffer 首次加载时触发一次，
+-- 在多个项目之间切 buffer 时环境不会跟着换，终端会继承到上一个项目的 venv。
+vim.api.nvim_create_autocmd({ "FileType", "BufEnter" }, {
   group = augroup,
-  pattern = "python",
   callback = function(args)
+    if vim.bo[args.buf].filetype ~= "python" then
+      return
+    end
     require("config.python").activate_project_venv(args.buf)
   end,
 })

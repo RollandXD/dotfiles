@@ -29,9 +29,20 @@ local function start_path(bufnr)
   return (vim.uv or vim.loop).cwd()
 end
 
+-- root 查找会向上遍历目录，而 BufEnter 每次切 buffer 都会触发，
+-- 因此按 buffer 名缓存结果，避免重复的文件系统调用。
+local root_cache = {}
+
 function M.root(bufnr)
   local start = start_path(bufnr)
-  return vim.fs.root(start, root_markers) or (vim.uv or vim.loop).cwd()
+  local cached = root_cache[start]
+  if cached then
+    return cached
+  end
+
+  local found = vim.fs.root(start, root_markers) or (vim.uv or vim.loop).cwd()
+  root_cache[start] = found
+  return found
 end
 
 function M.venv(root)
@@ -89,18 +100,38 @@ function M.env(bufnr)
   }
 end
 
+-- 上一次注入 PATH 的 venv bin 目录。切项目时必须先撤掉它，
+-- 否则多个项目的 .venv/bin 会在 PATH 里堆积，裸 `python` / `pytest`
+-- 会解析到先前那个项目，和 VIRTUAL_ENV 指向的环境互相矛盾。
+local injected_bin = nil
+
+local function remove_from_path(bin)
+  if not bin then
+    return
+  end
+
+  local kept = vim.tbl_filter(function(entry)
+    return entry ~= bin
+  end, vim.split(vim.env.PATH or "", ":", { plain = true }))
+
+  vim.env.PATH = table.concat(kept, ":")
+end
+
 function M.activate_project_venv(bufnr)
   local env = M.env(bufnr)
   if not env.VIRTUAL_ENV then
     return
   end
 
-  vim.env.VIRTUAL_ENV = env.VIRTUAL_ENV
-  local current_path = vim.env.PATH or ""
   local bin = env.VIRTUAL_ENV .. "/bin"
-  if not current_path:find(vim.pesc(bin), 1) then
-    vim.env.PATH = bin .. ":" .. current_path
+  if injected_bin == bin then
+    return
   end
+
+  remove_from_path(injected_bin)
+  vim.env.VIRTUAL_ENV = env.VIRTUAL_ENV
+  vim.env.PATH = bin .. ":" .. (vim.env.PATH or "")
+  injected_bin = bin
 end
 
 return M
