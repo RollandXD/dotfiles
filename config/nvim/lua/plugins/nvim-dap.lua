@@ -2,6 +2,11 @@ return {
   -- DAP 核心引擎
   {
     "mfussenegger/nvim-dap",
+    -- 附属组件随本插件一起惰性加载（否则它们没有触发条件，会在启动时就被加载）
+    dependencies = {
+      "jay-babu/mason-nvim-dap.nvim",
+      "theHamsta/nvim-dap-virtual-text",
+    },
     keys = {
       { "<F5>", function() require('dap').continue() end, desc = "启动/继续调试" },
       { "<F9>", function() require('dap').toggle_breakpoint() end, desc = "切换断点" },
@@ -321,7 +326,8 @@ return {
   -- Mason 自动安装 DAP 适配器
   {
     "jay-babu/mason-nvim-dap.nvim",
-    dependencies = { "williamboman/mason.nvim", "mfussenegger/nvim-dap" },
+    lazy = true, -- 由 nvim-dap 的 dependencies 拉起（首次按 F5/F9 等调试键时）
+    dependencies = { "williamboman/mason.nvim" },
     opts = {
       ensure_installed = { "codelldb", "debugpy" },
       automatic_installation = true,
@@ -331,7 +337,7 @@ return {
   -- DAP 虚拟文本（在代码中显示变量值）
   {
     "theHamsta/nvim-dap-virtual-text",
-    dependencies = { "mfussenegger/nvim-dap" },
+    lazy = true, -- 同上，随 nvim-dap 一起加载，避免无触发条件导致的启动加载
     opts = {
       enabled = true,
       enabled_commands = true,
