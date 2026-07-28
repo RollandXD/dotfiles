@@ -10,7 +10,8 @@ binds {
 
     // alt+tab切换窗口
     Mod+F1 hotkey-overlay-title="开关输入法 Toggle fcitx" {spawn-sh "pkill fcitx5 || fcitx5 ";}
-    Ctrl+Control_R hotkey-overlay-title="语音输入 Voice Input" {spawn "bash" "-c" "~/.local/bin/voxtype-toggle.sh";}
+    // disabled by Codex 2026-06-29: voxtype off
+    // Ctrl+Control_R hotkey-overlay-title="语音输入 Voice Input" {spawn "bash" "-c" "~/.local/bin/voxtype-toggle.sh";}
     Mod+F5 hotkey-overlay-title="快速存档 Quick save" {spawn "quicksave";}
     Mod+F8 hotkey-overlay-title="快速读档 Quick load" {spawn "quickload";}
 
@@ -209,8 +210,8 @@ binds {
     // === DMS 特有组件 ===
     // 任务管理器 (Mod+M)
     Mod+M hotkey-overlay-title="Task Manager" { spawn "dms" "ipc" "call" "processlist" "focusOrToggle"; }
-    // 电源菜单 (Super+X)
-    Super+X hotkey-overlay-title="Power Menu: Toggle" { spawn "dms" "ipc" "call" "powermenu" "toggle"; }
+    // 电源菜单 (Mod+P)
+    Mod+P hotkey-overlay-title="Power Menu: Toggle" { spawn "dms" "ipc" "call" "powermenu" "toggle"; }
     // 壁纸选择器 (Mod+Y，作为 Mod+Alt+W 的备用)
     Mod+Y hotkey-overlay-title="Browse Wallpapers" { spawn "dms" "ipc" "call" "dankdash" "wallpaper"; }
     // 剪贴板

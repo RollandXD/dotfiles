@@ -30,3 +30,4 @@ Thumbs.db
 .codex
 *.bak
 *.bak.codex-*
+*.bak-*
