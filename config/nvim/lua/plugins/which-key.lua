@@ -257,7 +257,7 @@ return {
       { "<leader>pd", desc = "调试当前测试" },
       { "<leader>pf", desc = "Ruff 格式检查" },
       { "<leader>pl", desc = "重跑上次测试" },
-      { "<leader>pm", desc = "运行 mypy src" },
+      { "<leader>pm", desc = "运行 mypy" },
       { "<leader>po", desc = "项目任务面板" },
       { "<leader>pO", desc = "测试输出面板" },
       { "<leader>pr", desc = "Ruff 检查" },

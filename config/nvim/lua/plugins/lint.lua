@@ -6,22 +6,16 @@ return {
   event = { "BufReadPost", "BufWritePost", "InsertLeave" },
   config = function()
     local lint = require("lint")
-    local python_tools = require("config.python")
 
     -- 按文件类型配置 Linter
     lint.linters_by_ft = {
       c = { "cppcheck" },
       cpp = { "cppcheck" },
-      -- 后续可以添加更多：
-      python = { "ruff" },
+      -- Python 不在这里：ruff 已作为 LSP 启用（见 lspconfig.lua），
+      -- 由它提供诊断和 code action。若这里再挂一次，同一条警告会出现两份。
       -- markdown = { "markdownlint" },
       -- lua = { "luacheck" },
     }
-
-    -- Python 项目优先使用本地 .venv/bin/ruff，避免 Neovim 没激活 shell 时找不到 ruff
-    lint.linters.ruff.cmd = function()
-      return python_tools.executable("ruff")
-    end
 
     -- 自动触发 Lint
     vim.api.nvim_create_autocmd({ "BufWritePost", "BufReadPost", "InsertLeave" }, {
