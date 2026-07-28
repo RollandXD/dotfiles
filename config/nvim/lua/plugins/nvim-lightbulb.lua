@@ -9,7 +9,7 @@ return {
       },
       sign = {
         enabled = true,
-        text = "CA",
+        text = "󰌵", -- 灯泡图标，占一列；原为文字 "CA"（两列，会挤压 git 标记与断点）
       },
       virtual_text = {
         enabled = false,
