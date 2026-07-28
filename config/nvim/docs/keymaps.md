@@ -37,6 +37,10 @@
 | `<leader>=` | `n` | 均分所有窗口 | `config/keymaps.lua` |
 | `<leader>-` | `n` | 减小窗口高度 | `config/keymaps.lua` |
 | `<leader>+` | `n` | 增大窗口高度 | `config/keymaps.lua` |
+| `<A-H>` | `n` | 减小窗口宽度 5 列 | `config/keymaps.lua` |
+| `<A-L>` | `n` | 增大窗口宽度 5 列 | `config/keymaps.lua` |
+| `<A-J>` | `n` | 减小窗口高度 5 行 | `config/keymaps.lua` |
+| `<A-K>` | `n` | 增大窗口高度 5 行 | `config/keymaps.lua` |
 | `Y` | `n` | 复制到行尾 | `config/keymaps.lua` |
 | `<` | `v` | 左缩进并保持选中 | `config/keymaps.lua` |
 | `>` | `v` | 右缩进并保持选中 | `config/keymaps.lua` |
@@ -205,6 +209,12 @@
 | `,` | `n`,`x`,`o` | 重复上一次字符跳转 |
 
 ## 仅在特定上下文中生效的映射
+
+### Markdown / Quarto / R Markdown 文件中
+
+| 按键 | 模式 | 功能 |
+| --- | --- | --- |
+| `,p` | `n` | 切换 Markdown 表格预览模式 |
 
 ### grug-far 面板中
 

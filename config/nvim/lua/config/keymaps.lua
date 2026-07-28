@@ -44,9 +44,14 @@ map('n', 'L', '$', { desc = "移动到行尾" })
 -- Alt-hjkl 由 vim-tmux-navigator 接管，实现 Neovim/tmux 无缝移动。
 
 -- ========== 调整分屏大小 ==========
+local resize_step = 5
 map('n', '<Leader>=', '<C-w>=', { desc = "均分所有窗口" })
 map('n', '<Leader>-', '<C-w>-', { desc = "减小窗口高度" })
 map('n', '<Leader>+', '<C-w>+', { desc = "增大窗口高度" })
+map('n', '<A-H>', '<cmd>vertical resize -' .. resize_step .. '<cr>', { desc = "减小窗口宽度" })
+map('n', '<A-L>', '<cmd>vertical resize +' .. resize_step .. '<cr>', { desc = "增大窗口宽度" })
+map('n', '<A-J>', '<cmd>resize -' .. resize_step .. '<cr>', { desc = "减小窗口高度" })
+map('n', '<A-K>', '<cmd>resize +' .. resize_step .. '<cr>', { desc = "增大窗口高度" })
 
 -- ========== 复制增强 ==========
 -- Y 复制到行尾（更符合 D/C 的逻辑）
