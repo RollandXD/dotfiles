@@ -2,6 +2,9 @@
 -- 从 Vim 迁移到 Neovim 的渐进式配置
 -- 迁移日期: 2026-02-16
 
+-- 加载上游 bug 临时补丁（需最早加载）
+require("config.patches")
+
 -- 加载基础选项设置
 require("config.options")
 

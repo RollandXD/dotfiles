@@ -21,11 +21,9 @@ return {
       },
     },
 
-    -- 补全设置（blink.cmp 可通过 source 集成，也可禁用内置 cmp）
+    -- 补全设置（4.0 起补全由内置 obsidian-ls LSP 提供，nvim_cmp/blink 开关已废弃并移除）
     completion = {
-      nvim_cmp = false,   -- 已迁移至 blink.cmp，禁用旧的 nvim-cmp 集成
       min_chars = 2,      -- 最少输入 2 个字符触发补全
-      blink = true,       -- 启用 blink.cmp 集成
     },
 
     -- 新笔记设置

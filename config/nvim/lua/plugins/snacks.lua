@@ -68,6 +68,9 @@ return {
       win = {
         border = "rounded",
         wo = { winbar = "" },
+        keys = {
+          float_close = { "<C-q>", "hide", mode = { "n", "t" }, desc = "关闭浮动终端" },
+        },
       },
     },
 
@@ -122,9 +125,9 @@ return {
     -- 文件浏览器（替代 neo-tree）
     { "<leader>e", function() Snacks.explorer() end, desc = "文件树" },
     -- 终端（替代 toggleterm）
-    { "<C-\\>", function() Snacks.terminal() end, desc = "切换终端" },
-    { "<leader>tf", function() Snacks.terminal() end, desc = "浮动终端" },
-    { "<leader>tv", function() Snacks.terminal(nil, { win = { position = "right", width = 0.4 } }) end, desc = "垂直终端" },
+    { "<C-\\>", function() Snacks.terminal(nil, { win = { position = "float" }, count = 1 }) end, desc = "切换终端" },
+    { "<leader>tf", function() Snacks.terminal(nil, { win = { position = "float" }, count = 2 }) end, desc = "浮动终端" },
+    { "<leader>tv", function() Snacks.terminal(nil, { win = { position = "right", width = 0.4 }, count = 3 }) end, desc = "垂直终端" },
     -- Git（替代 lazygit.nvim）
     { "<leader>gg", function() Snacks.lazygit() end, desc = "打开 LazyGit" },
     { "<leader>gG", function() Snacks.lazygit.log_file() end, desc = "LazyGit 当前文件历史" },
