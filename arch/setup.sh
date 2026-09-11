@@ -4,10 +4,10 @@ set -e
 
 DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-echo "==> [1/6] 安装 pacman 包..."
+echo "==> [1/7] 安装 pacman 包..."
 sudo pacman -Syu --needed - < "$DOTFILES_DIR/arch/packages.txt"
 
-echo "==> [2/6] 安装 AUR 包（需要 yay 或 paru）..."
+echo "==> [2/7] 安装 AUR 包（需要 yay 或 paru）..."
 if command -v yay &>/dev/null; then
   grep -v '^#' "$DOTFILES_DIR/arch/packages-aur.txt" | grep -v '^$' | yay -S --needed -
 elif command -v paru &>/dev/null; then
@@ -17,12 +17,12 @@ else
   echo "    手动安装 AUR 包请参考 arch/packages-aur.txt"
 fi
 
-echo "==> [3/6] 安装 Oh My Zsh（若未安装）..."
+echo "==> [3/7] 安装 Oh My Zsh（若未安装）..."
 if [ ! -d "$HOME/.oh-my-zsh" ]; then
   sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
 fi
 
-echo "==> [4/6] 安装 Zsh 插件..."
+echo "==> [4/7] 安装 Zsh 插件..."
 ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
 
 [ ! -d "$ZSH_CUSTOM/plugins/zsh-autosuggestions" ] && \
@@ -34,7 +34,7 @@ ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
 [ ! -d "$ZSH_CUSTOM/themes/powerlevel10k" ] && \
   git clone --depth=1 https://github.com/romkatv/powerlevel10k "$ZSH_CUSTOM/themes/powerlevel10k"
 
-echo "==> [5/6] 链接配置文件..."
+echo "==> [5/7] 链接配置文件..."
 # Arch 专用 zshrc
 ln -sf "$DOTFILES_DIR/arch/home/.zshrc"  "$HOME/.zshrc"
 
@@ -60,7 +60,37 @@ ln -sf "$DOTFILES_DIR/arch/config/DankMaterialShell/settings.json" \
 ln -sf "$DOTFILES_DIR/arch/config/DankMaterialShell/firefox.css" \
        "$HOME/.config/DankMaterialShell/firefox.css"
 
-echo "==> [6/6] 设置默认 Shell 为 zsh..."
+# DMS 磁盘组件：状态栏 pill 点击打开 /、/home 和 /mnt/wingame 详情
+mkdir -p "$HOME/.config/DankMaterialShell/plugins"
+ln -sfn "$DOTFILES_DIR/arch/config/DankMaterialShell/plugins/storageMonitor" \
+        "$HOME/.config/DankMaterialShell/plugins/storageMonitor"
+ln -sf "$DOTFILES_DIR/arch/config/DankMaterialShell/plugin_settings.json" \
+       "$HOME/.config/DankMaterialShell/plugin_settings.json"
+
+# 截图 OCR：脚本纳入 dotfiles，模型放 XDG 数据目录，不把 40+ MiB 二进制提交进仓库
+mkdir -p "$HOME/.local/bin"
+ln -sf "$DOTFILES_DIR/arch/local/bin/dank-ocr" \
+       "$HOME/.local/bin/dank-ocr"
+ln -sf "$DOTFILES_DIR/arch/local/bin/install-dank-ocr-models" \
+       "$HOME/.local/bin/install-dank-ocr-models"
+ln -sf "$DOTFILES_DIR/arch/local/bin/dank-shutdown" \
+       "$HOME/.local/bin/dank-shutdown"
+
+# 磁盘空间监控：状态栏由 DMS 展示，user timer 负责跨阈值通知
+mkdir -p "$HOME/.config/systemd/user"
+ln -sf "$DOTFILES_DIR/arch/local/bin/disk-space-guard" \
+       "$HOME/.local/bin/disk-space-guard"
+ln -sf "$DOTFILES_DIR/arch/local/share/systemd/user/disk-space-guard.service" \
+       "$HOME/.config/systemd/user/disk-space-guard.service"
+ln -sf "$DOTFILES_DIR/arch/local/share/systemd/user/disk-space-guard.timer" \
+       "$HOME/.config/systemd/user/disk-space-guard.timer"
+systemctl --user daemon-reload
+systemctl --user enable disk-space-guard.timer
+
+echo "==> [6/7] 安装截图 OCR 高精度模型..."
+"$HOME/.local/bin/install-dank-ocr-models"
+
+echo "==> [7/7] 设置默认 Shell 为 zsh..."
 chsh -s "$(which zsh)"
 
 echo ""

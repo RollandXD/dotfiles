@@ -1,0 +1,346 @@
+#!/usr/bin/env bash
+# dank-ocr v2 — 框选屏幕区域，OCR 成文字送进剪贴板
+#
+# 基线：Tesseract 5.5.3 + tessdata_best（固定版见 install-dank-ocr-models）
+#
+#   dank-ocr                    中英混排，按单个文本块识别（PSM 6）
+#   dank-ocr -e                 纯英文；适合代码、报错和英文文档
+#   dank-ocr --line             强制按单行识别（PSM 7）
+#   dank-ocr -s                 零散界面文字（PSM 11）
+#   dank-ocr -l jpn             指定 Tesseract 语言
+#   dank-ocr -i image.png -p    识别已有图片并打印到 stdout
+#   dank-ocr -k                 保留 Tesseract 产生的汉字间空格
+#   dank-ocr -d                 输出模型、置信度、字高和重试信息
+
+set -uo pipefail
+
+readonly SCRIPT_VERSION="2.0.0"
+readonly TOAST_CATEGORY="dank-ocr"
+readonly MODEL_DIR="${DANK_OCR_TESSDATA_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/tessdata-best}"
+
+# Catppuccin Mocha
+readonly SLURP_BG="#1e1e2e99"
+readonly SLURP_BORDER="#89b4faff"
+readonly SLURP_SEL="#89b4fa22"
+
+# Tesseract 对约 30 px 字高较稳定。低置信度、小字或空结果才进入预处理重试，
+# 避免旧版“先靠 OCR 测字高，OCR 失败后反而不放大”的循环依赖。
+readonly TARGET_HEIGHT=32
+readonly MIN_HEIGHT=24
+readonly MAX_SCALE=300
+readonly MIN_CONFIDENCE="${DANK_OCR_MIN_CONFIDENCE:-82}"
+
+LANGS="chi_sim+eng"
+PSM=6
+COPY=1
+CLEAN=1
+DEBUG=0
+INPUT_FILE=""
+CAPTURED_IMAGE=""
+TESSDATA_ARGS=()
+CLEANUP_FILES=()
+
+cleanup() {
+    ((${#CLEANUP_FILES[@]})) && rm -f -- "${CLEANUP_FILES[@]}"
+    return 0
+}
+trap cleanup EXIT
+
+is_gui() {
+    case ${DANK_OCR_UI:-auto} in
+        cli) return 1 ;;
+        gui) return 0 ;;
+        *)   [[ ! -t 2 ]] ;;
+    esac
+}
+
+toast() { # toast <info|warn|error> <消息> [详情]
+    local level=$1 message=$2 details=${3:-}
+    if command -v dms >/dev/null 2>&1 &&
+        dms ipc call toast "${level}With" "$message" "$details" "" "$TOAST_CATEGORY" >/dev/null 2>&1; then
+        return 0
+    fi
+    command -v notify-send >/dev/null 2>&1 &&
+        notify-send -a "dank-ocr" "$message" "$details"
+}
+
+say() { # say <info|warn|error> <消息> [详情]
+    if is_gui; then
+        toast "$@"
+    else
+        printf '%s\n' "$2" >&2
+        [[ -n ${3:-} ]] && printf '  %s\n' "$3" >&2
+    fi
+    return 0
+}
+
+debug() {
+    ((DEBUG)) && printf '[dank-ocr] %s\n' "$*" >&2
+    return 0
+}
+
+die() {
+    say error "$@"
+    exit 1
+}
+
+need() {
+    command -v "$1" >/dev/null 2>&1 ||
+        die "缺少依赖：$1" "请安装：${2:-$1}"
+}
+
+make_temp_file() {
+    local template=$1 runtime_dir=${XDG_RUNTIME_DIR:-/tmp}
+    mktemp --tmpdir="$runtime_dir" "$template" 2>/dev/null ||
+        mktemp --tmpdir=/tmp "$template"
+}
+
+usage() {
+    sed -n '2,/^$/s/^# \{0,1\}//p' "$0"
+}
+
+parse_args() {
+    while (($#)); do
+        case $1 in
+            -e | --eng)     LANGS="eng" ;;
+            -l | --lang)
+                (($# >= 2)) || die "缺少语言" "-l/--lang 后面要跟语言代码"
+                LANGS=$2
+                shift
+                ;;
+            --block)        PSM=6 ;;
+            --line)         PSM=7 ;;
+            -s | --sparse)  PSM=11 ;;
+            --psm)
+                (($# >= 2)) || die "缺少版面模式" "--psm 后面要跟 0–13"
+                [[ $2 =~ ^([0-9]|1[0-3])$ ]] || die "无效的版面模式：$2" "可用范围是 0–13"
+                PSM=$2
+                shift
+                ;;
+            -i | --input)
+                (($# >= 2)) || die "缺少图片路径" "-i/--input 后面要跟图片文件"
+                INPUT_FILE=$2
+                shift
+                ;;
+            -p | --print)   COPY=0 ;;
+            -k | --keep)    CLEAN=0 ;;
+            -d | --debug)   DEBUG=1 ;;
+            --version)      printf 'dank-ocr %s\n' "$SCRIPT_VERSION"; exit 0 ;;
+            -h | --help)    usage; exit 0 ;;
+            --)             shift; break ;;
+            *)              die "未知选项：$1" "运行 dank-ocr --help 查看用法" ;;
+        esac
+        shift
+    done
+    (($# == 0)) || die "不接受位置参数：$1" "已有图片请使用 -i/--input"
+}
+
+configure_models() {
+    local lang
+    local -a requested=()
+    IFS='+' read -r -a requested <<<"$LANGS"
+
+    for lang in "${requested[@]}"; do
+        [[ -f "$MODEL_DIR/${lang}.traineddata" ]] || return 1
+    done
+
+    # 官方 chi_sim 配置会自动加载竖排子模型；缺失时 Tesseract 只会警告后降级。
+    if [[ "+$LANGS+" == *"+chi_sim+"* && ! -f "$MODEL_DIR/chi_sim_vert.traineddata" ]]; then
+        return 1
+    fi
+
+    # txt/tsv 多输出配置由系统 Tesseract 包提供，模型安装器会在用户目录建立链接。
+    [[ -r "$MODEL_DIR/configs/tsv" && -r "$MODEL_DIR/configs/txt" ]] || return 1
+
+    TESSDATA_ARGS=(--tessdata-dir "$MODEL_DIR")
+}
+
+capture_image() {
+    if [[ -n $INPUT_FILE ]]; then
+        [[ -r $INPUT_FILE ]] || die "无法读取图片" "$INPUT_FILE"
+        CAPTURED_IMAGE=$INPUT_FILE
+        return 0
+    fi
+
+    need slurp
+    need grim
+
+    local geom shot
+    geom=$(slurp -d -b "$SLURP_BG" -c "$SLURP_BORDER" -s "$SLURP_SEL" -w 2 2>/dev/null) || return 1
+    [[ -n $geom ]] || return 1
+
+    shot=$(make_temp_file dank-ocr-XXXXXX.png) ||
+        die "建立临时文件失败"
+    CLEANUP_FILES+=("$shot")
+    grim -g "$geom" "$shot" 2>/dev/null || die "截图失败"
+    CAPTURED_IMAGE=$shot
+}
+
+ocr_candidate() { # ocr_candidate <图片> <输出前缀>
+    local image=$1 prefix=$2
+    local error_file="${prefix}.stderr"
+    local -a command=(
+        tesseract "${TESSDATA_ARGS[@]}" "$image" "$prefix"
+        -l "$LANGS" --oem 1 --psm "$PSM" txt tsv
+    )
+
+    CLEANUP_FILES+=("${prefix}.txt" "${prefix}.tsv" "$error_file")
+
+    if ! "${command[@]}" 2>"$error_file"; then
+        debug "Tesseract 失败：$(tr '\n' ' ' <"$error_file")"
+        return 1
+    fi
+
+    if ((DEBUG)) && [[ -s $error_file ]]; then
+        debug "Tesseract 提示：$(tr '\n' ' ' <"$error_file")"
+    fi
+}
+
+tsv_confidence() {
+    awk -F'\t' '
+        NR > 1 && $11 + 0 >= 0 && $12 != "" {
+            weight = length($12)
+            if (weight < 1) weight = 1
+            sum += ($11 + 0) * weight
+            total += weight
+        }
+        END { if (total) printf "%.2f", sum / total; else printf "0.00" }
+    ' "$1"
+}
+
+tsv_char_height() {
+    awk -F'\t' 'NR > 1 && $11 + 0 >= 0 && $12 != "" && $10 + 0 > 0 { print $10 + 0 }' "$1" |
+        sort -n |
+        awk '{ value[NR] = $1 } END { if (NR) printf "%d", value[int((NR + 1) / 2)] }'
+}
+
+has_text() {
+    [[ -s $1 ]] && grep -q '[^[:space:]]' "$1"
+}
+
+confidence_below() {
+    awk -v left="$1" -v right="$2" 'BEGIN { exit !(left + 0 < right + 0) }'
+}
+
+confidence_improved() {
+    awk -v candidate="$1" -v current="$2" -v margin="$3" \
+        'BEGIN { exit !(candidate + 0 >= current + 0 + margin + 0) }'
+}
+
+prepare_retry_image() { # prepare_retry_image <原图> <输出> <字高中位数>
+    local input=$1 output=$2 char_height=${3:-}
+    local scale=200 border_color
+    local -a command=(magick "$input")
+
+    if [[ $char_height =~ ^[0-9]+$ ]] && ((char_height > 0)); then
+        scale=$((TARGET_HEIGHT * 100 / char_height))
+        ((scale < 100)) && scale=100
+        ((scale > MAX_SCALE)) && scale=$MAX_SCALE
+    fi
+
+    if ((scale > 100)); then
+        command+=(-resize "${scale}%")
+    fi
+    border_color=$(magick "$input" -format '%[pixel:p{0,0}]' info: 2>/dev/null) || border_color="white"
+    command+=(-bordercolor "$border_color" -border 10x10 "$output")
+
+    debug "重试预处理：scale=${scale}% border=$border_color"
+    "${command[@]}" 2>/dev/null
+}
+
+clean_text() {
+    perl -CSD -pe 's/(?<=\p{Han})[ \t]+(?=\p{Han})//g; s/[ \t]+$//' |
+        awk 'BEGIN { blank = 0 }
+             /^[[:space:]]*$/ { blank = 1; next }
+             { if (blank && seen) print ""; blank = 0; seen = 1; print }'
+}
+
+main() {
+    parse_args "$@"
+    need tesseract
+    need awk gawk
+    need grep
+    need perl
+    [[ $MIN_CONFIDENCE =~ ^[0-9]+([.][0-9]+)?$ ]] ||
+        die "DANK_OCR_MIN_CONFIDENCE 不是数字" "$MIN_CONFIDENCE"
+
+    local model_source="system"
+    if configure_models; then
+        model_source="tessdata_best"
+    elif [[ $LANGS == "chi_sim+eng" ]]; then
+        say warn "未启用高精度 OCR 模型" "运行 install-dank-ocr-models 后会自动启用；本次使用系统模型"
+    fi
+
+    local image work_prefix base_prefix retry_image retry_prefix
+    capture_image || return 0
+    image=$CAPTURED_IMAGE
+    [[ -n $image ]] || return 0
+
+    work_prefix=$(make_temp_file dank-ocr-result-XXXXXX) ||
+        die "建立临时输出名失败"
+    base_prefix="${work_prefix}-base"
+    retry_image="${work_prefix}-retry.png"
+    retry_prefix="${work_prefix}-retry"
+    CLEANUP_FILES+=("$work_prefix" "$retry_image")
+
+    debug "version=$SCRIPT_VERSION model=$model_source langs=$LANGS psm=$PSM image=$image"
+    if ! ocr_candidate "$image" "$base_prefix"; then
+        local error_details=""
+        [[ -s ${base_prefix}.stderr ]] && error_details=$(tail -n 4 "${base_prefix}.stderr" | tr '\n' ' ')
+        die "OCR 引擎运行失败" "$error_details"
+    fi
+
+    local selected_prefix=$base_prefix selected_conf
+    local base_conf char_height retry_conf="0.00"
+    base_conf=$(tsv_confidence "${base_prefix}.tsv")
+    char_height=$(tsv_char_height "${base_prefix}.tsv")
+    selected_conf=$base_conf
+    debug "首轮：confidence=$base_conf char_height=${char_height:-unknown}px"
+
+    if ! has_text "${base_prefix}.txt" ||
+        confidence_below "$base_conf" "$MIN_CONFIDENCE" ||
+        { [[ $char_height =~ ^[0-9]+$ ]] && ((char_height < MIN_HEIGHT)); }; then
+        if command -v magick >/dev/null 2>&1 &&
+            prepare_retry_image "$image" "$retry_image" "$char_height" &&
+            ocr_candidate "$retry_image" "$retry_prefix"; then
+            retry_conf=$(tsv_confidence "${retry_prefix}.tsv")
+            debug "重试：confidence=$retry_conf"
+            if ! has_text "${base_prefix}.txt" ||
+                { has_text "${retry_prefix}.txt" && confidence_improved "$retry_conf" "$base_conf" "2"; }; then
+                selected_prefix=$retry_prefix
+                selected_conf=$retry_conf
+                debug "采用预处理重试结果"
+            else
+                debug "重试提升不足，保留原图结果"
+            fi
+        fi
+    fi
+
+    local text
+    if ((CLEAN)); then
+        text=$(clean_text <"${selected_prefix}.txt")
+    else
+        text=$(<"${selected_prefix}.txt")
+    fi
+    text=${text%"${text##*[![:space:]]}"}
+
+    if [[ -z $text ]]; then
+        say warn "没识别出文字" "可缩小框选范围，或用 --line / --sparse 切换版面模式"
+        return 1
+    fi
+
+    if ((COPY == 0)); then
+        printf '%s\n' "$text"
+        return 0
+    fi
+
+    need wl-copy wl-clipboard
+    printf '%s' "$text" | wl-copy
+
+    local chars preview
+    chars=$(printf '%s' "$text" | wc -m)
+    preview=$(printf '%s' "$text" | tr '\n' ' ' | cut -c1-50)
+    say info "已识别 ${chars} 字，进剪贴板了" "置信度 ${selected_conf}% · $preview"
+}
+
+main "$@"

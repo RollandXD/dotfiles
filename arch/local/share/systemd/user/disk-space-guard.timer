@@ -1,0 +1,11 @@
+[Unit]
+Description=每五分钟检查磁盘空间
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+AccuracySec=1min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

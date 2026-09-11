@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+# 安装 dank-ocr 使用的官方 tessdata_best 模型，无需 root。
+
+set -euo pipefail
+
+readonly MODEL_COMMIT="e12c65a915945e4c28e237a9b52bc4a8f39a0cec"
+readonly MODEL_BASE_URL="https://raw.githubusercontent.com/tesseract-ocr/tessdata_best/${MODEL_COMMIT}"
+readonly MODEL_DIR="${DANK_OCR_TESSDATA_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/tessdata-best}"
+
+readonly -a MODELS=(
+    chi_sim.traineddata
+    chi_sim_vert.traineddata
+    eng.traineddata
+)
+
+TEMP_DIR=""
+
+declare -Ar CHECKSUMS=(
+    [chi_sim.traineddata]="4fef2d1306c8e87616d4d3e4c6c67faf5d44be3342290cf8f2f0f6e3aa7e735b"
+    [chi_sim_vert.traineddata]="ea672a78157199c333aa12ec4e74550077689b545df5fc770903716850c8b2e5"
+    [eng.traineddata]="8280aed0782fe27257a68ea10fe7ef324ca0f8d85bd2fd145d1c2b560bcb66ba"
+)
+
+need() {
+    command -v "$1" >/dev/null 2>&1 || {
+        printf '缺少依赖：%s\n' "$1" >&2
+        exit 1
+    }
+}
+
+cleanup() {
+    [[ -n $TEMP_DIR && -d $TEMP_DIR ]] && rm -rf -- "$TEMP_DIR"
+    return 0
+}
+trap cleanup EXIT
+
+model_is_valid() {
+    local model=$1 path="$MODEL_DIR/$1"
+    [[ -f $path ]] || return 1
+    printf '%s  %s\n' "${CHECKSUMS[$model]}" "$path" | sha256sum --check --status
+}
+
+link_config_dir() {
+    local name=$1 source="/usr/share/tessdata/$1" target="$MODEL_DIR/$1"
+    [[ -d $source ]] || {
+        printf '缺少 Tesseract 配置目录：%s\n' "$source" >&2
+        return 1
+    }
+    if [[ -L $target ]]; then
+        ln -sfn "$source" "$target"
+    elif [[ ! -e $target ]]; then
+        ln -s "$source" "$target"
+    fi
+}
+
+main() {
+    need curl
+    need install
+    need sha256sum
+    need mktemp
+
+    mkdir -p "$MODEL_DIR"
+    TEMP_DIR=$(mktemp -d "${TMPDIR:-/tmp}/dank-ocr-models-XXXXXX")
+
+    local model temp_file staged_file
+    for model in "${MODELS[@]}"; do
+        if model_is_valid "$model"; then
+            printf '✓ 已是目标版本：%s\n' "$model"
+            continue
+        fi
+
+        temp_file="$TEMP_DIR/$model"
+        staged_file="$MODEL_DIR/.${model}.new"
+        printf '↓ 下载 %s\n' "$model"
+        curl --fail --location --retry 3 --retry-all-errors \
+            --connect-timeout 10 --output "$temp_file" "$MODEL_BASE_URL/$model"
+        printf '%s  %s\n' "${CHECKSUMS[$model]}" "$temp_file" |
+            sha256sum --check --status || {
+                printf '模型校验失败：%s\n' "$model" >&2
+                exit 1
+            }
+        install -m 0644 "$temp_file" "$staged_file"
+        mv -f "$staged_file" "$MODEL_DIR/$model"
+        printf '✓ 已安装：%s\n' "$model"
+    done
+
+    # 多输出 txt/tsv 配置由 Arch 的 tesseract 包维护，避免复制后随版本漂移。
+    link_config_dir configs
+    link_config_dir tessconfigs
+
+    printf '\n高精度模型安装完成：%s\n' "$MODEL_DIR"
+    printf '上游固定提交：%s\n' "$MODEL_COMMIT"
+}
+
+main "$@"

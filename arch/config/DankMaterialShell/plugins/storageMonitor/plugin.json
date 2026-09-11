@@ -1,0 +1,12 @@
+{
+  "id": "storageMonitor",
+  "name": "Storage Monitor",
+  "description": "Show /, /home and /mnt/wingame usage in a clickable bar pill",
+  "version": "1.0.0",
+  "author": "Rolland",
+  "type": "widget",
+  "capabilities": ["dankbar-widget", "disk-usage"],
+  "component": "./StorageMonitor.qml",
+  "icon": "storage",
+  "permissions": ["process"]
+}

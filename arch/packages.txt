@@ -3,8 +3,12 @@ bat
 curl
 eza
 fzf
+fuzzel
+gawk
 git
 git-delta
+grim
+imagemagick
 jdk21-openjdk
 jq
 lazygit
@@ -18,4 +22,10 @@ vim
 zoxide
 zsh
 noto-fonts-cjk
+perl
+slurp
+tesseract
+tesseract-data-chi_sim
+tesseract-data-eng
 ttf-jetbrains-mono-nerd
+wl-clipboard

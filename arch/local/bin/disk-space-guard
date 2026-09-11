@@ -1,0 +1,224 @@
+#!/usr/bin/env bash
+# disk-space-guard v1 — 只读检查挂载点，并在空间跨过阈值时通知。
+#
+# 默认检查 /、/home 和 /mnt/wingame。它不会使用 sudo，也不会删除文件。
+
+set -euo pipefail
+
+readonly SCRIPT_VERSION="1.0.0"
+readonly APP_NAME="Disk Space Guard"
+readonly WARN_PERCENT="${DISK_SPACE_GUARD_WARN_PERCENT:-80}"
+readonly CRITICAL_PERCENT="${DISK_SPACE_GUARD_CRITICAL_PERCENT:-90}"
+readonly RECOVERY_PERCENT="${DISK_SPACE_GUARD_RECOVERY_PERCENT:-75}"
+readonly REPEAT_SECONDS="${DISK_SPACE_GUARD_REPEAT_SECONDS:-21600}"
+readonly MOUNTS="${DISK_SPACE_GUARD_MOUNTS:-/ /home /mnt/wingame}"
+
+# 运行时目录通常是 tmpfs，磁盘快满时仍能写入状态；没有它时再退回 XDG state。
+readonly STATE_BASE="${XDG_RUNTIME_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}}"
+readonly STATE_DIR="$STATE_BASE/disk-space-guard"
+readonly STATE_FILE="$STATE_DIR/state"
+
+usage() {
+    cat <<'EOF'
+用法：disk-space-guard [check|--test <normal|warning|critical|recovery>]
+
+check       检查挂载点并在状态变化时通知（默认）
+--test      发送一次测试通知，不读取或修改真实磁盘状态
+--version   显示版本
+--help      显示帮助
+EOF
+}
+
+die() {
+    printf '%s: %s\n' "$APP_NAME" "$*" >&2
+    exit 1
+}
+
+notify() {
+    local urgency=$1 summary=$2 body=$3
+    if command -v notify-send >/dev/null 2>&1; then
+        notify-send --app-name="$APP_NAME" --urgency="$urgency" "$summary" "$body" || true
+    fi
+    # 即使通知服务暂时不可用，systemd journal 仍留下证据。
+    printf '[%s] %s: %s\n' "$urgency" "$summary" "$body" >&2
+}
+
+read_mount() {
+    local mount=$1 line percent available filesystem
+    if ! line=$(df -P -k -- "$mount" 2>/dev/null | awk 'NR == 2 { print; exit }'); then
+        printf 'error\t%s\t%s\n' "$mount" "df failed"
+        return 0
+    fi
+
+    if [[ -z $line ]]; then
+        printf 'error\t%s\t%s\n' "$mount" "mount unavailable"
+        return 0
+    fi
+
+    read -r filesystem _ _ available percent _ <<<"$line"
+    percent=${percent%%%}
+    if [[ ! $percent =~ ^[0-9]+$ ]]; then
+        printf 'error\t%s\t%s\n' "$mount" "invalid df output"
+        return 0
+    fi
+    printf 'ok\t%s\t%s\t%s\t%s\n' "$mount" "$percent" "$available" "$filesystem"
+}
+
+write_state() {
+    local state=$1 now=$2 temp
+    if ! mkdir -p "$STATE_DIR" 2>/dev/null; then
+        return 0
+    fi
+    temp=$(mktemp "$STATE_DIR/.state.XXXXXX" 2>/dev/null) || return 0
+    printf '%s|%s\n' "$state" "$now" >"$temp"
+    mv -f -- "$temp" "$STATE_FILE"
+}
+
+read_state() {
+    local state=normal last=0
+    if [[ -r $STATE_FILE ]]; then
+        IFS='|' read -r state last <"$STATE_FILE" || true
+        [[ $state =~ ^(normal|warning|critical)$ ]] || state=normal
+        [[ $last =~ ^[0-9]+$ ]] || last=0
+    fi
+    printf '%s|%s\n' "$state" "$last"
+}
+
+check_snapper_cleanup_timer() {
+    local timer_state
+    if ! command -v systemctl >/dev/null 2>&1; then
+        printf 'systemd: systemctl unavailable\n'
+        return 1
+    fi
+    timer_state=$(systemctl is-active snapper-cleanup.timer 2>/dev/null || true)
+    if [[ $timer_state != active ]]; then
+        printf 'snapper-cleanup.timer: %s\n' "${timer_state:-unknown}"
+        return 1
+    fi
+    return 0
+}
+
+test_notification() {
+    local state=$1
+    case $state in
+        normal)
+            notify low "磁盘空间监控测试" "当前为正常状态（低于警告阈值）。"
+            ;;
+        warning)
+            notify normal "磁盘空间监控测试：警告" "模拟空间使用率达到 80% 以上。请检查快照、Trash 和缓存。"
+            ;;
+        critical)
+            notify critical "磁盘空间监控测试：严重" "模拟空间使用率达到 90% 以上。请暂停升级、编译和大型下载。"
+            ;;
+        recovery)
+            notify low "磁盘空间监控测试：已恢复" "模拟空间使用率已低于恢复阈值。"
+            ;;
+        *)
+            die "未知测试状态：$state"
+            ;;
+    esac
+}
+
+check_space() {
+    local row status mount percent available filesystem timer_detail
+    local overall=normal failure=0 recovery_ready=1
+    local previous previous_at now elapsed should_notify=0 summary urgency
+    local effective_state details
+    local -a detail_lines=()
+
+    for mount in $MOUNTS; do
+        row=$(read_mount "$mount")
+        IFS=$'\t' read -r status mount percent available filesystem <<<"$row"
+        if [[ $status == error ]]; then
+            failure=1
+            recovery_ready=0
+            detail_lines+=("$mount: $percent")
+            continue
+        fi
+
+        detail_lines+=("$mount: ${percent}% used, ${available} KiB available (${filesystem})")
+        if ((percent >= CRITICAL_PERCENT)); then
+            overall=critical
+        elif ((percent >= WARN_PERCENT)) && [[ $overall == normal ]]; then
+            overall=warning
+        fi
+        ((percent <= RECOVERY_PERCENT)) || recovery_ready=0
+    done
+
+    if ((failure)); then
+        overall=critical
+        detail_lines+=("至少一个挂载点无法读取。")
+    fi
+
+    if ! timer_detail=$(check_snapper_cleanup_timer); then
+        failure=1
+        overall=critical
+        detail_lines+=("$timer_detail")
+    fi
+
+    details=$(printf '%s\n' "${detail_lines[@]}")
+    IFS='|' read -r previous previous_at <<<"$(read_state)"
+    now=$(date +%s)
+    elapsed=$((now - previous_at))
+    effective_state=$overall
+
+    if [[ $overall == normal && $previous != normal && $recovery_ready -eq 0 ]]; then
+        # 低于警告线但尚未低于恢复线时，保持原状态，避免通知来回抖动。
+        effective_state=$previous
+    fi
+
+    if [[ $effective_state != "$previous" ]]; then
+        should_notify=1
+    elif [[ $effective_state == critical && $elapsed -ge $REPEAT_SECONDS ]]; then
+        should_notify=1
+    fi
+
+    case $effective_state in
+        critical)
+            summary="磁盘空间严重不足"
+            urgency=critical
+            ;;
+        warning)
+            summary="磁盘空间开始紧张"
+            urgency=normal
+            ;;
+        normal)
+            summary="磁盘空间已恢复"
+            urgency=low
+            ;;
+        *)
+            effective_state=critical
+            summary="磁盘空间监控状态异常"
+            urgency=critical
+            should_notify=1
+            ;;
+    esac
+
+    if ((should_notify)); then
+        notify "$urgency" "$summary" "$details"
+        write_state "$effective_state" "$now"
+    else
+        if [[ $effective_state == normal ]]; then
+            write_state normal "$now"
+        else
+            write_state "$effective_state" "$previous_at"
+        fi
+    fi
+
+    printf '%s' "$details"
+}
+
+main() {
+    case ${1:-check} in
+        check) check_space ;;
+        --test)
+            (($# == 2)) || die '--test 后需要 normal、warning、critical 或 recovery'
+            test_notification "$2"
+            ;;
+        --version) printf 'disk-space-guard %s\n' "$SCRIPT_VERSION" ;;
+        --help|-h) usage ;;
+        *) die "未知参数：$1" ;;
+    esac
+}
+
+main "$@"

@@ -198,6 +198,8 @@ binds {
     Ctrl+Print  hotkey-overlay-title=null { spawn-sh "niri msg action screenshot-window --show-pointer false && pkill -f -USR1 screenshot-sound.sh"; }
     Shift+Print  hotkey-overlay-title=null { spawn-sh "niri msg action screenshot-screen --show-pointer false && pkill -f -USR1 screenshot-sound.sh"; }
     Mod+Shift+S  hotkey-overlay-title="截图后按下此键进行编辑 Edit the image after screenshot" { spawn-sh "wl-paste | satty -f -";}
+    Mod+Alt+O  hotkey-overlay-title="框选取字 OCR to clipboard" { spawn "dank-ocr"; }
+    Mod+Alt+Shift+O  hotkey-overlay-title="框选取字（纯英文）OCR English only" { spawn "dank-ocr" "-e"; }
 
     Mod+Escape allow-inhibiting=false { toggle-keyboard-shortcuts-inhibit; }
     Mod+Shift+E hotkey-overlay-title="退出niri Quit niri" { quit; }
@@ -212,6 +214,8 @@ binds {
     Mod+M hotkey-overlay-title="Task Manager" { spawn "dms" "ipc" "call" "processlist" "focusOrToggle"; }
     // 电源菜单 (Mod+P)
     Mod+P hotkey-overlay-title="Power Menu: Toggle" { spawn "dms" "ipc" "call" "powermenu" "toggle"; }
+    // 定时关机菜单 (Mod+Ctrl+P)
+    Mod+Ctrl+P hotkey-overlay-title="Scheduled Shutdown" { spawn "dank-shutdown"; }
     // 壁纸选择器 (Mod+Y，作为 Mod+Alt+W 的备用)
     Mod+Y hotkey-overlay-title="Browse Wallpapers" { spawn "dms" "ipc" "call" "dankdash" "wallpaper"; }
     // 剪贴板

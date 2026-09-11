@@ -1,0 +1,9 @@
+[Unit]
+Description=检查磁盘空间并发送通知
+After=graphical-session.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/disk-space-guard check
+Nice=10
+IOSchedulingClass=idle

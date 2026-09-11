@@ -1,0 +1,420 @@
+#!/usr/bin/env bash
+# dank-shutdown — 定时关机 / 重启助手（systemd + DMS + niri）
+#
+# 计划本身交给系统侧的 shutdown 命令保管（写入 login1 的 ScheduledShutdown），
+# 登出、重启 shell、DMS 崩溃都不影响；倒计时提醒走用户级 systemd timer + DMS toast，
+# 不需要任何特权。两者职责分离，互不拖累。
+#
+#   dank-shutdown                 无参数时弹 fuzzel 菜单
+#   dank-shutdown at 23:30        今天 23:30 关机（时间已过则算明天）
+#   dank-shutdown in 90m          90 分钟后；也接受 90 / 1h / 1h30m
+#   dank-shutdown status          查看当前计划
+#   dank-shutdown cancel          取消计划并清掉提醒
+#   dank-shutdown now             立即关机
+#   dank-shutdown -r at 03:00     -r/--reboot 改为重启
+#
+# 环境变量：
+#   DANK_SHUTDOWN_DRY_RUN=1       只打印将要执行的命令，不真的动手
+
+set -uo pipefail
+
+SELF=$(realpath "${BASH_SOURCE[0]}")
+readonly SELF
+readonly WARN_PREFIX="dank-shutdown-warn"
+readonly TOAST_CATEGORY="dank-shutdown"
+
+# 关机前多久提醒一次，单位秒。从大到小写。
+readonly WARN_OFFSETS=(600 60)
+
+MODE="poweroff"   # poweroff | reboot
+
+# ── 输出：有终端就写终端，没终端（fuzzel 启动）就走 toast ──────────────────
+
+is_gui() {
+    case ${DANK_SHUTDOWN_UI:-auto} in
+        cli) return 1 ;;
+        gui) return 0 ;;
+        *)   [[ ! -t 2 ]] ;;
+    esac
+}
+
+toast() { # toast <info|warn|error> <消息> [详情] [可复制的命令]
+    local level=$1 message=$2 details=${3:-} command=${4:-}
+    if command -v dms >/dev/null 2>&1 &&
+        dms ipc call toast "${level}With" "$message" "$details" "$command" "$TOAST_CATEGORY" >/dev/null 2>&1; then
+        return 0
+    fi
+    command -v notify-send >/dev/null 2>&1 &&
+        notify-send -a "dank-shutdown" "$message" "$details"
+}
+
+info() { # info <消息> [详情] [可复制的命令]
+    if is_gui; then
+        toast info "$@"
+    else
+        printf '%s\n' "$1" >&2
+        [[ -n ${2:-} ]] && printf '  %s\n' "$2" >&2
+        [[ -n ${3:-} ]] && printf '  %s\n' "$3" >&2
+    fi
+    return 0
+}
+
+die() { # die <消息> [详情] [可复制的命令]
+    if is_gui; then
+        toast error "$@"
+    else
+        printf '错误：%s\n' "$1" >&2
+        [[ -n ${2:-} ]] && printf '  %s\n' "$2" >&2
+        [[ -n ${3:-} ]] && printf '  %s\n' "$3" >&2
+    fi
+    exit 1
+}
+
+run() { # 包一层，方便 DANK_SHUTDOWN_DRY_RUN 观察
+    if [[ ${DANK_SHUTDOWN_DRY_RUN:-0} == 1 ]]; then
+        printf '[dry-run] %s\n' "$*" >&2
+        return 0
+    fi
+    "$@"
+}
+
+# ── 读取当前计划 ─────────────────────────────────────────────────────────
+# 成功时设置 SCHED_EPOCH / SCHED_MODE 并返回 0；没有计划返回 1。
+# 走 D-Bus 而不是 /run/systemd/shutdown/scheduled，普通用户就能读。
+
+read_scheduled() {
+    local out usec
+    out=$(busctl get-property org.freedesktop.login1 /org/freedesktop/login1 \
+        org.freedesktop.login1.Manager ScheduledShutdown 2>/dev/null) || return 1
+
+    # 形如：(st) "poweroff" 1785000000000000   没有计划时是 (st) "" 18446744073709551615
+    [[ $out =~ \"([a-z-]*)\"[[:space:]]+([0-9]+) ]] || return 1
+    SCHED_MODE=${BASH_REMATCH[1]}
+    usec=${BASH_REMATCH[2]}
+    [[ -n $SCHED_MODE ]] || return 1
+    [[ $usec == 18446744073709551615 ]] && return 1   # UINT64_MAX，字符串比较避开溢出
+
+    SCHED_EPOCH=$((usec / 1000000))
+    return 0
+}
+
+mode_cn() {
+    case $1 in
+        poweroff) printf '关机' ;;
+        reboot)   printf '重启' ;;
+        halt)     printf '停机' ;;
+        *)        printf '%s' "$1" ;;
+    esac
+}
+
+human_left() { # human_left <剩余秒数>
+    local left=$1 h m
+    ((left < 0)) && left=0
+    h=$((left / 3600))
+    m=$(((left % 3600) / 60))
+    if ((h > 0)); then
+        printf '%d 小时 %d 分钟' "$h" "$m"
+    elif ((m > 0)); then
+        printf '%d 分钟' "$m"
+    else
+        printf '不到 1 分钟'
+    fi
+}
+
+# ── 时间解析 ─────────────────────────────────────────────────────────────
+
+parse_duration() { # "90" / "90m" / "1h" / "1h30m" / "+45" → 秒数
+    local s=${1#+} total=0 num unit
+    [[ $s =~ ^[0-9]+$ ]] && { printf '%d' $((s * 60)); return 0; }
+
+    while [[ $s =~ ^([0-9]+)([hms])(.*)$ ]]; do
+        num=${BASH_REMATCH[1]}
+        unit=${BASH_REMATCH[2]}
+        s=${BASH_REMATCH[3]}
+        case $unit in
+            h) total=$((total + num * 3600)) ;;
+            m) total=$((total + num * 60)) ;;
+            s) total=$((total + num)) ;;
+        esac
+    done
+
+    [[ -n $s ]] && return 1        # 有解析不掉的残留，判定为非法
+    ((total > 0)) || return 1
+    printf '%d' "$total"
+}
+
+parse_clock() { # "23:30" / "2026-08-01 02:00" → 目标 epoch，纯时刻且已过则顺延到明天
+    local spec=$1 now epoch
+    now=$(date +%s)
+    epoch=$(date -d "$spec" +%s 2>/dev/null) || return 1
+
+    if ((epoch <= now)) && [[ $spec =~ ^[0-9]{1,2}:[0-9]{2}(:[0-9]{2})?$ ]]; then
+        epoch=$(date -d "tomorrow $spec" +%s 2>/dev/null) || return 1
+    fi
+    ((epoch > now)) || return 1
+    printf '%d' "$epoch"
+}
+
+# ── 提醒 timer ───────────────────────────────────────────────────────────
+
+clear_warn_timers() {
+    local unit
+    while read -r unit _; do
+        [[ -n $unit ]] || continue
+        run systemctl --user stop "$unit" >/dev/null 2>&1
+    done < <(systemctl --user list-units --all --plain --no-legend --no-pager \
+        "${WARN_PREFIX}-*.timer" "${WARN_PREFIX}-*.service" 2>/dev/null | awk '{print $1}')
+}
+
+arm_warn_timers() { # arm_warn_timers <目标epoch> <mode>
+    local target=$1 mode=$2 now offset fire
+    now=$(date +%s)
+
+    for offset in "${WARN_OFFSETS[@]}"; do
+        fire=$((target - offset))
+        ((fire > now + 5)) || continue   # 太近了就别排，免得刚设完就弹
+
+        run systemd-run --user --quiet \
+            --unit="${WARN_PREFIX}-${offset}" \
+            --description="dank-shutdown 提醒（提前 ${offset} 秒）" \
+            --timer-property=RemainAfterElapse=false \
+            --on-calendar="$(date -d "@$fire" '+%Y-%m-%d %H:%M:%S')" \
+            "$SELF" __warn "$target" "$mode"
+    done
+}
+
+do_warn() { # 由 timer 调起，不面向人
+    local target=$1 mode=$2 now left
+    now=$(date +%s)
+    left=$((target - now))
+
+    local level="warn"
+    ((left <= 90)) && level="error"
+
+    toast "$level" \
+        "$(mode_cn "$mode")倒计时：$(human_left "$left")" \
+        "预定 $(date -d "@$target" '+%H:%M') $(mode_cn "$mode")，需要中止请复制下面的命令" \
+        "dank-shutdown cancel"
+}
+
+# ── sudo 前置检查 ────────────────────────────────────────────────────────
+
+# 文件名带 zzz- 前缀：sudo 按字母序读 /etc/sudoers.d，最后匹配的规则胜出，
+# 得排在别的 "(ALL) ALL" 规则后面才不会被覆盖。
+# 顺带放行 /usr/bin/true，纯粹是给下面的 sudo -n 探测用的，本身没有任何副作用。
+sudoers_hint() {
+    printf 'echo "%s ALL=(root) NOPASSWD: /usr/bin/shutdown, /usr/bin/true" | sudo tee /etc/sudoers.d/zzz-dank-shutdown' "$USER"
+}
+
+ensure_sudo() {
+    [[ ${DANK_SHUTDOWN_DRY_RUN:-0} == 1 ]] && return 0
+    sudo -n true 2>/dev/null && return 0
+    if is_gui; then
+        die "从菜单设定需要免密 sudo" \
+            "菜单里没地方输密码。执行下面这条配置一次即可（只放行 shutdown）。若你已经配过还是看到这条，多半是被 /etc/sudoers.d 里字母序更靠后的 (ALL) ALL 规则覆盖了，用 sudo -l 看最后一条是什么" \
+            "$(sudoers_hint)"
+    fi
+    # 终端里就让 sudo 自己提示密码，不拦
+    return 0
+}
+
+# ── 三个动作 ─────────────────────────────────────────────────────────────
+
+cmd_status() {
+    if ! read_scheduled; then
+        info "当前没有定时$(mode_cn "$MODE")计划"
+        return 0
+    fi
+
+    local now left detail
+    now=$(date +%s)
+    left=$((SCHED_EPOCH - now))
+    detail="还有 $(human_left "$left")"
+
+    if is_gui; then
+        toast info "已计划 $(date -d "@$SCHED_EPOCH" '+%m-%d %H:%M') $(mode_cn "$SCHED_MODE")" \
+            "$detail" "dank-shutdown cancel"
+    else
+        printf '已计划：%s\n' "$(mode_cn "$SCHED_MODE")"
+        printf '时间：  %s（%s）\n' "$(date -d "@$SCHED_EPOCH" '+%Y-%m-%d %H:%M:%S')" "$detail"
+        local offset fire
+        for offset in "${WARN_OFFSETS[@]}"; do
+            fire=$((SCHED_EPOCH - offset))
+            ((fire > now)) || continue
+            printf '提醒：  %s（提前 %s）\n' "$(date -d "@$fire" '+%H:%M')" "$(human_left "$offset")"
+        done
+        printf '取消：  dank-shutdown cancel\n'
+    fi
+}
+
+cmd_cancel() {
+    local had_plan=1
+    read_scheduled || had_plan=0
+
+    clear_warn_timers
+    command -v dms >/dev/null 2>&1 &&
+        dms ipc call toast dismiss "$TOAST_CATEGORY" >/dev/null 2>&1
+
+    if ((had_plan == 0)); then
+        info "本来就没有计划，已顺手清掉残留的提醒"
+        return 0
+    fi
+
+    ensure_sudo
+    run sudo shutdown -c --no-wall 2>/dev/null ||
+        die "取消失败" "sudo shutdown -c --no-wall 返回非零"
+
+    info "已取消 $(date -d "@$SCHED_EPOCH" '+%H:%M') 的$(mode_cn "$SCHED_MODE")计划"
+}
+
+cmd_schedule() { # cmd_schedule <目标epoch>
+    local target=$1 now mins flag
+
+    now=$(date +%s)
+    ((target > now)) || die "目标时间已经过去了"
+
+    # shutdown 只认整分钟，向上取整，至少 1 分钟留出提醒余地
+    mins=$(((target - now + 59) / 60))
+    ((mins < 1)) && mins=1
+
+    case $MODE in
+        poweroff) flag="-h" ;;
+        reboot)   flag="-r" ;;
+        *)        die "未知模式：$MODE" ;;
+    esac
+
+    ensure_sudo
+
+    # 已有计划先撤掉，否则 shutdown 会拒绝改期
+    read_scheduled && run sudo shutdown -c --no-wall >/dev/null 2>&1
+    clear_warn_timers
+
+    # --no-wall：提醒交给 DMS toast，别让 wall 广播打断终端
+    run sudo shutdown "$flag" --no-wall "+$mins" ||
+        die "设定失败" "sudo shutdown $flag +$mins 返回非零"
+
+    arm_warn_timers "$target" "$MODE"
+
+    info "已计划 $(date -d "@$target" '+%H:%M') $(mode_cn "$MODE")" \
+        "还有 $(human_left $((target - now)))，提醒会在关机前 10 分钟和 1 分钟弹出" \
+        "dank-shutdown cancel"
+}
+
+cmd_now() {
+    ensure_sudo
+    clear_warn_timers
+    case $MODE in
+        poweroff) run sudo shutdown -h --no-wall now ;;
+        reboot)   run sudo shutdown -r --no-wall now ;;
+    esac
+}
+
+# ── fuzzel 菜单 ──────────────────────────────────────────────────────────
+
+menu() {
+    command -v fuzzel >/dev/null 2>&1 || die "没装 fuzzel，用不了菜单模式"
+
+    local -a labels=() actions=()
+
+    if read_scheduled; then
+        labels+=("✗  取消当前计划（$(date -d "@$SCHED_EPOCH" '+%H:%M') $(mode_cn "$SCHED_MODE")）")
+        actions+=("cancel")
+    fi
+
+    labels+=("󰅶  30 分钟后关机");  actions+=("in:30m")
+    labels+=("󰅶  1 小时后关机");   actions+=("in:1h")
+    labels+=("󰅶  2 小时后关机");   actions+=("in:2h")
+    labels+=("󰤄  今晚 23:30 关机"); actions+=("at:23:30")
+    labels+=("󰑐  1 小时后重启");   actions+=("reboot-in:1h")
+    labels+=("󰅒  自定义时间…");    actions+=("custom")
+
+    local idx
+    idx=$(printf '%s\n' "${labels[@]}" |
+        fuzzel --dmenu --index --prompt "定时关机 > " \
+            --lines "${#labels[@]}" --width 32) || return 0
+    [[ $idx =~ ^[0-9]+$ ]] || return 0
+
+    local action=${actions[$idx]}
+    case $action in
+        cancel) cmd_cancel ;;
+        in:*)     dispatch_spec "in" "${action#in:}" ;;
+        at:*)     dispatch_spec "at" "${action#at:}" ;;
+        reboot-in:*)
+            MODE="reboot"
+            dispatch_spec "in" "${action#reboot-in:}"
+            ;;
+        custom) menu_custom ;;
+    esac
+}
+
+menu_custom() {
+    local input
+    input=$(fuzzel --dmenu --prompt-only "时间或时长 > " \
+        --placeholder "23:30 或 90m" --width 32 </dev/null) || return 0
+    input=${input//[[:space:]]/}
+    [[ -n $input ]] || return 0
+
+    # 像时刻就按时刻解析，否则按时长
+    if [[ $input == *:* ]]; then
+        dispatch_spec "at" "$input"
+    else
+        dispatch_spec "in" "$input"
+    fi
+}
+
+# ── 入口 ─────────────────────────────────────────────────────────────────
+
+dispatch_spec() { # dispatch_spec <at|in> <值>
+    local kind=$1 spec=$2 target secs
+    case $kind in
+        at)
+            target=$(parse_clock "$spec") ||
+                die "看不懂的时间：$spec" "试试 23:30 或 2026-08-01 02:00"
+            ;;
+        in)
+            secs=$(parse_duration "$spec") ||
+                die "看不懂的时长：$spec" "试试 90、90m、1h、1h30m"
+            target=$(($(date +%s) + secs))
+            ;;
+    esac
+    cmd_schedule "$target"
+}
+
+usage() {
+    # 取文件开头那段连续的注释块，去掉 shebang 和井号
+    awk 'NR == 1 { next } /^#/ { sub(/^# ?/, ""); print; next } { exit }' "$SELF"
+}
+
+main() {
+    # 内部子命令：由 systemd timer 调起
+    if [[ ${1:-} == "__warn" ]]; then
+        do_warn "$2" "$3"
+        return 0
+    fi
+
+    while [[ ${1:-} == -* ]]; do
+        case $1 in
+            -r | --reboot)   MODE="reboot" ;;
+            -h | --help)     usage; return 0 ;;
+            -n | --dry-run)  export DANK_SHUTDOWN_DRY_RUN=1 ;;
+            *) die "未知选项：$1" ;;
+        esac
+        shift
+    done
+
+    case ${1:-menu} in
+        menu)             menu ;;
+        status | st)      cmd_status ;;
+        cancel | c)       cmd_cancel ;;
+        now)              cmd_now ;;
+        at)               [[ -n ${2:-} ]] || die "at 后面要跟时间，例如 at 23:30"
+                          dispatch_spec "at" "$2" ;;
+        in)               [[ -n ${2:-} ]] || die "in 后面要跟时长，例如 in 90m"
+                          dispatch_spec "in" "$2" ;;
+        *:*)              dispatch_spec "at" "$1" ;;   # 直接 dank-shutdown 23:30
+        [0-9]*)           dispatch_spec "in" "$1" ;;   # 直接 dank-shutdown 90m
+        *) die "未知命令：$1" "跑 dank-shutdown --help 看用法" ;;
+    esac
+}
+
+main "$@"

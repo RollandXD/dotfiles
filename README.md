@@ -31,6 +31,11 @@ dotfiles/
 │   ├── packages-aur.txt  # AUR 包列表
 │   ├── home/
 │   │   └── .zshrc        # Arch 版 zshrc
+│   ├── local/bin/
+│   │   ├── dank-ocr      # Wayland 框选 OCR
+│   │   ├── install-dank-ocr-models
+│   │   ├── disk-space-guard
+│   │   └── dank-shutdown
 │   └── config/
 │       ├── niri/         # 滚动平铺 Wayland 合成器（含 dms/、shorin-niri/ 子配置）
 │       ├── kitty/        # 终端（Catppuccin Frappe）
@@ -67,14 +72,39 @@ p10k configure
 
 - **Shell**：Zsh + Oh My Zsh + Powerlevel10k
 - **Zsh 插件**：zsh-autosuggestions、zsh-syntax-highlighting
-- **CLI 工具**：bat、eza、fzf、lsd、ripgrep、zoxide、lazygit
+- **CLI 工具**：bat、eza、fzf、fuzzel、lsd、ripgrep、zoxide、lazygit
 - **编辑器**：Neovim（含完整插件配置）、Vim
 - **开发环境**：Java 21（`jdk21-openjdk`）
 - **Git**：git-delta 并排 diff 视图
 - **终端复用**：Tmux
 - **桌面环境**：niri（滚动平铺 Wayland 合成器）+ DankMaterialShell（QuickShell 状态栏）+ kitty 终端
+- **截图 OCR**：Tesseract `tessdata_best` 中英模型、低置信度自动放大重试、结果写入剪贴板
 
 > 注：niri / DMS / kitty 配置只能链接，不会自动安装这些软件。请先按各自项目说明装好运行时（`niri`、`quickshell` 等），再跑 `arch/setup.sh`。
+
+### 截图 OCR
+
+- `Super + Alt + O`：中英混排框选取字
+- `Super + Alt + Shift + O`：纯英文、代码或报错信息
+- `dank-ocr --sparse`：识别位置分散的界面文字
+
+高精度模型固定到安装脚本记录的官方 `tessdata_best` 提交，安装在
+`~/.local/share/tessdata-best/`，不会覆盖 pacman 管理的系统模型。需要单独
+修复或更新模型时运行 `install-dank-ocr-models`。
+
+### 磁盘空间监控
+
+- DMS 状态栏显示 `/`、`/home` 和 `/mnt/wingame` 的使用率，点击可查看详情。
+- `disk-space-guard.timer` 每 5 分钟检查一次空间和 Snapper 清理 timer，并在跨越阈值时通知。
+- 可用 `disk-space-guard --test warning` 等参数发送一次测试通知；脚本不会删除文件。
+- `arch/setup.sh` 会链接 unit、执行 user manager reload 并 enable timer，但不主动 `--now`；需要用
+  `systemctl --user is-enabled disk-space-guard.timer` 回读启用状态。
+
+### 定时关机
+
+- `Super + Ctrl + P` 打开 `fuzzel` 关机菜单。
+- `dank-shutdown in 90m` 或 `dank-shutdown at 23:30` 创建计划，`status` 查看，`cancel` 取消。
+- `DANK_SHUTDOWN_DRY_RUN=1 dank-shutdown now` 只打印动作，不执行真实关机。
 
 ### 验证
 
