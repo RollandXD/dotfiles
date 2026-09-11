@@ -1,11 +1,11 @@
 return {
   "OXY2DEV/markview.nvim",
-  lazy = false,      -- 官方建议不要 lazy load 
+  lazy = false,      -- 官方建议不要 lazy load
   -- ft = "markdown" -- 如果真的需要可以开启这行并注释上一行
 
   dependencies = {
     "nvim-treesitter/nvim-treesitter",
-    "nvim-tree/nvim-web-devicons"
+    "nvim-tree/nvim-web-devicons",
   },
   opts = {
     -- markview 默认已经配置好了绝佳的效果
@@ -40,15 +40,13 @@ return {
     end
 
     local function restore_writing_options(previous)
-      if previous and previous.wrap == true then
-        vim.wo.wrap = previous.wrap
-        vim.wo.linebreak = previous.linebreak
-        vim.wo.sidescrolloff = previous.sidescrolloff
-      else
-        vim.wo.wrap = true
-        vim.wo.linebreak = true
-        vim.wo.sidescrolloff = 0
+      if not previous then
+        return
       end
+
+      vim.wo.wrap = previous.wrap
+      vim.wo.linebreak = previous.linebreak
+      vim.wo.sidescrolloff = previous.sidescrolloff
     end
 
     local function set_table_preview(enabled)
@@ -82,10 +80,7 @@ return {
         return
       end
 
-      local preview_is_active = vim.w.markdown_table_preview_active == true
-        or (vim.wo.wrap == false and vim.wo.linebreak == false)
-
-      set_table_preview(not preview_is_active)
+      set_table_preview(vim.w.markdown_table_preview_active ~= true)
     end, { desc = "切换 Markdown 表格预览模式", force = true })
 
     local markdown_filetypes = {

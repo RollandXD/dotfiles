@@ -14,7 +14,7 @@ return {
     },
     cmd = { "DBUI", "DBUIToggle", "DBUIAddConnection" },
     keys = {
-      { "<leader>D", "<cmd>DBUIToggle<cr>", desc = "Toggle Database UI" },
+      { "<leader>tD", "<cmd>DBUIToggle<cr>", desc = "切换数据库界面" },
     },
     init = function()
       -- 数据库 UI 配置

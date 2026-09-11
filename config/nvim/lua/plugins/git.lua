@@ -78,7 +78,7 @@ return {
             vim.cmd("DiffviewOpen")
           end
         end,
-        desc = "Toggle Diff 视图",
+        desc = "切换 Diff 视图",
       },
       {
         "<leader>gs",
@@ -90,7 +90,7 @@ return {
             vim.cmd("DiffviewOpen --staged")
           end
         end,
-        desc = "Toggle Staged Diff",
+        desc = "切换暂存区 Diff",
       },
       { "<leader>gh", "<cmd>DiffviewFileHistory %<cr>", desc = "当前文件历史" },
       { "<leader>gH", "<cmd>DiffviewFileHistory<cr>", desc = "项目历史" },

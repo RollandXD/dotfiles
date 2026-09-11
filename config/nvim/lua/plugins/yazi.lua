@@ -4,8 +4,8 @@ return {
   event = "VeryLazy",
   dependencies = { { "nvim-lua/plenary.nvim", lazy = true } },
   keys = {
-    { "<leader>fe", mode = { "n", "v" }, "<cmd>Yazi<cr>",        desc = "打开 yazi（当前文件）" },
-    { "<leader>cw",                       "<cmd>Yazi cwd<cr>",    desc = "打开 yazi（工作目录）" },
+    { "<leader>fy", mode = { "n", "v" }, "<cmd>Yazi<cr>",        desc = "打开 Yazi（当前文件）" },
+    { "<leader>fY",                       "<cmd>Yazi cwd<cr>",    desc = "打开 Yazi（工作目录）" },
     { "<C-Up>",                           "<cmd>Yazi toggle<cr>", desc = "恢复上次 yazi 会话" },
   },
   opts = {

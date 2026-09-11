@@ -97,7 +97,7 @@ opt.splitbelow = true
 
 -- ========== 折叠设置 ==========
 -- 由 nvim-ufo 接管折叠（支持预览、更好的虚拟文本）
--- ufo 内部使用 treesitter/indent provider，无需手动设 foldmethod
+-- ufo 会把 foldmethod 切到 manual；provider 更新时需要较大的 foldlevel 保持默认展开
 opt.foldcolumn = "1"
 opt.foldenable = true
 opt.foldlevel = 99

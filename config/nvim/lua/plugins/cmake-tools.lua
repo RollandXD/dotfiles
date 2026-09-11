@@ -19,8 +19,6 @@ local cmake_opts = {
   },
 }
 
-local synced_root = nil
-
 local function path_exists(path, kind)
   local uv = vim.uv or vim.loop
   local stat = uv.fs_stat(path)
@@ -33,14 +31,6 @@ local function path_exists(path, kind)
   end
 
   return stat.type == kind
-end
-
-local function unload_cmake_tools()
-  for name in pairs(package.loaded) do
-    if name == "cmake-tools" or name:match("^cmake%-tools%.") then
-      package.loaded[name] = nil
-    end
-  end
 end
 
 local function normalized(path)
@@ -201,26 +191,26 @@ local function find_cmake_root(bufnr)
   return nil
 end
 
-local function ensure_cmake_context()
-  local root = find_cmake_root(0)
+local function sync_cmake_root(bufnr)
+  local root = find_cmake_root(bufnr)
   if not root then
-    vim.notify("当前 buffer 不在 CMake 项目里，无法执行 CMake 命令", vim.log.levels.ERROR)
     return nil
   end
 
+  -- cmake-tools 会在 DirChanged 时保存旧项目并加载新项目 session。
+  -- 必须先修正历史 session，再切换目录，避免读入旧的 build/ 路径。
+  ensure_preset_session(root)
   if (vim.uv or vim.loop).cwd() ~= root then
     vim.cmd.cd(vim.fn.fnameescape(root))
-    synced_root = nil
   end
 
-  ensure_preset_session(root)
+  return root
+end
 
-  if synced_root ~= root then
-    unload_cmake_tools()
-    local cmake = require("cmake-tools")
-    cmake.setup(vim.deepcopy(cmake_opts))
-    synced_root = root
-    return cmake
+local function ensure_cmake_context()
+  if not sync_cmake_root(0) then
+    vim.notify("当前 buffer 不在 CMake 项目里，无法执行 CMake 命令", vim.log.levels.ERROR)
+    return nil
   end
 
   return require("cmake-tools")
@@ -242,6 +232,11 @@ return {
   dependencies = { "nvim-lua/plenary.nvim" },
   ft = { "cmake", "cpp", "c" },
   config = function()
+    sync_cmake_root(0)
+
+    -- 只初始化一次；后续项目切换交给插件原生的 DirChanged/session 生命周期。
+    require("cmake-tools").setup(cmake_opts)
+
     create_cmake_command("CMakeConfigure", function(cmake_tools, cmd_opts)
       cmake_tools.generate(cmd_opts)
     end, {

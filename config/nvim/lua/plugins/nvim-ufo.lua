@@ -1,16 +1,28 @@
 -- ========== nvim-ufo - 更好的折叠体验 ==========
--- 折叠行末尾预览内容，支持 Treesitter / LSP 折叠
+-- 折叠行末尾预览内容；优先使用 Treesitter，失败时回退到 indent
 
 return {
   "kevinhwang91/nvim-ufo",
   dependencies = { "kevinhwang91/promise-async" },
   event = "BufReadPost",
   keys = {
-    { "zR", function() require("ufo").openAllFolds() end, desc = "打开所有折叠" },
-    { "zM", function() require("ufo").closeAllFolds() end, desc = "关闭所有折叠" },
-    { "zr", function() require("ufo").openFoldsExceptKinds() end, desc = "减少折叠层级" },
-    { "zm", function() require("ufo").closeFoldsWith() end, desc = "增加折叠层级" },
-    { "zK", function() require("ufo").peekFoldedLinesUnderCursor() end, desc = "预览折叠内容" },
+    { "zR", function() require("ufo").openAllFolds() end, desc = "折叠：展开全部（保持层级）" },
+    { "zM", function() require("ufo").closeAllFolds() end, desc = "折叠：关闭全部（保持层级）" },
+    {
+      "zr",
+      function() require("ufo").openFoldsExceptKinds() end,
+      desc = "折叠：展开全部（小写快捷键）",
+    },
+    {
+      "zm",
+      function() require("ufo").closeFoldsWith() end,
+      desc = "折叠：关闭全部（小写快捷键）",
+    },
+    {
+      "zp",
+      function() require("ufo").peekFoldedLinesUnderCursor() end,
+      desc = "折叠：预览当前关闭折叠",
+    },
   },
   opts = {
     -- 优先用 Treesitter 折叠，回退到缩进

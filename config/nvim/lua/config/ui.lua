@@ -7,7 +7,6 @@ M.special_filetypes = {
   ["lazy"] = true,
   ["mason"] = true,
   ["snacks_explorer"] = true,
-  ["neominimap"] = true,
   ["qf"] = true,
 }
 

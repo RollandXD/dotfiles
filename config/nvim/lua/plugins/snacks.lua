@@ -69,7 +69,7 @@ return {
         border = "rounded",
         wo = { winbar = "" },
         keys = {
-          float_close = { "<C-q>", "hide", mode = { "n", "t" }, desc = "关闭浮动终端" },
+          float_close = { "<C-\\>", "hide", mode = { "n", "t" }, desc = "切换浮动终端" },
         },
       },
     },
@@ -138,11 +138,13 @@ return {
     { "<leader>fH", function() Snacks.picker.help() end, desc = "搜索帮助文档" },
     { "<leader>fr", function() Snacks.picker.recent() end, desc = "最近文件" },
     { "<leader>fk", function() Snacks.picker.keymaps() end, desc = "快捷键列表" },
+    { "<leader>fl", function() Snacks.picker.lines() end, desc = "搜索当前 Buffer" },
+    { "<leader>fp", function() Snacks.picker.projects() end, desc = "选择项目" },
+    { "<leader>fR", function() Snacks.picker.resume() end, desc = "恢复上次搜索" },
     -- 文件浏览器（替代 neo-tree）
     { "<leader>e", function() Snacks.explorer() end, desc = "文件树" },
     -- 终端（替代 toggleterm）
     { "<C-\\>", function() Snacks.terminal(nil, { win = { position = "float" }, count = 1 }) end, desc = "切换终端" },
-    { "<leader>tf", function() Snacks.terminal(nil, { win = { position = "float" }, count = 2 }) end, desc = "浮动终端" },
     { "<leader>tv", function() Snacks.terminal(nil, { win = { position = "right", width = 0.4 }, count = 3 }) end, desc = "垂直终端" },
     -- Git（替代 lazygit.nvim）
     { "<leader>gg", function() Snacks.lazygit() end, desc = "打开 LazyGit" },

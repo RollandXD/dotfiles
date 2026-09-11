@@ -16,11 +16,11 @@ return {
   },
   keys = {
     {
-      "<leader>tc",
+      "<leader>ut",
       function()
         require("treesitter-context").toggle()
       end,
-      desc = "切换代码上下文",
+      desc = "切换 Treesitter 上下文",
     },
     {
       "[C",

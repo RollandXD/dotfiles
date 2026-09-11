@@ -6,6 +6,19 @@ return {
   "zbirenbaum/copilot.lua",
   cmd = "Copilot",
   event = "InsertEnter",
+  keys = {
+    {
+      "<leader>ai",
+      function()
+        require("copilot.suggestion").toggle_auto_trigger()
+        local enabled = vim.b.copilot_suggestion_auto_trigger
+        -- 如果 toggle 后值为 nil 表示沿用全局状态，默认认为开启。
+        if enabled == nil then enabled = true end
+        vim.notify("Copilot: " .. (enabled and "已开启" or "已关闭"), vim.log.levels.INFO)
+      end,
+      desc = "切换 Copilot 建议",
+    },
+  },
   config = function()
     require("copilot").setup({
       -- 建议设置
@@ -31,13 +44,5 @@ return {
       },
     })
 
-    -- 切换 Copilot 开关
-    vim.keymap.set("n", "<leader>tc", function()
-      require("copilot.suggestion").toggle_auto_trigger()
-      local enabled = vim.b.copilot_suggestion_auto_trigger
-      -- 如果 toggle 后值为 nil 表示全局状态，默认认为开启
-      if enabled == nil then enabled = true end
-      vim.notify("Copilot: " .. (enabled and "已开启" or "已关闭"), vim.log.levels.INFO)
-    end, { desc = "Copilot 开关" })
   end,
 }

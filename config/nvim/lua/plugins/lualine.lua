@@ -3,7 +3,6 @@ return {
   lazy = false,
   dependencies = {
     "nvim-tree/nvim-web-devicons",
-    "SmiteshP/nvim-navic",
   },
   config = function()
     local ui = require("config.ui")
@@ -43,7 +42,7 @@ return {
         component_separators = { left = "", right = "" },
         section_separators = { left = "", right = "" },
         disabled_filetypes = {
-          statusline = { "snacks_picker_input", "neominimap" },
+          statusline = { "snacks_picker_input" },
           winbar = {},
         },
         ignore_focus = ui.special_filetype_list(),

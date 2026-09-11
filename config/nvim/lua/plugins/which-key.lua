@@ -15,9 +15,16 @@ return {
   end,
   config = function()
     local wk = require("which-key")
+    local immediate_prefixes = {
+      [vim.keycode("<leader>")] = true,
+      [vim.keycode("<localleader>")] = true,
+    }
 
     wk.setup({
-      delay = 0, -- 按下 Leader 后立即显示 which-key
+      delay = function(ctx)
+        -- Leader/LocalLeader 和插件提示立即出现；原生多键前缀稍作延迟，减少干扰。
+        return (ctx.plugin or immediate_prefixes[ctx.keys]) and 0 or 250
+      end,
       triggers = {
         { "<auto>", mode = "nxso" },
         { "<leader>", mode = { "n", "v" } },
@@ -28,6 +35,9 @@ return {
         spelling = {
           enabled = false,
         },
+        presets = {
+          z = false, -- 使用下方与 Neovim 0.12 对齐的完整中文速查
+        },
       },
       win = {
         border = "rounded",
@@ -36,11 +46,13 @@ return {
 
     -- 新版 spec：使用 desc/group 字段
     wk.add({
+      { "<localleader>", group = "文件标记/局部操作" },
+
       -- ========== g 前缀：跳转/LSP ==========
       { "g", group = "跳转/LSP" },
       -- LSP 相关
       { "gd", desc = "跳转到定义" },
-      { "gh", desc = "悬浮文档" },
+      { "gh", desc = "智能悬浮文档" },
       { "gr", group = "LSP 重构" },
       { "grr", desc = "查找引用" },
       { "gra", desc = "代码操作", mode = { "n", "v" } },
@@ -91,48 +103,57 @@ return {
       -- 其他
       { "gI", desc = "在行首插入（第 1 列）" },
 
-      -- ========== z 前缀：折叠/视图 ==========
-      { "z", group = "折叠/视图" },
+      -- ========== z 前缀：折叠/视图/拼写/块编辑 ==========
+      -- UFO 映射（zR/zM/zr/zm/zp）直接读取插件 keys 中的 desc，不在这里重复登记。
+      { "z", group = "折叠/视图/拼写/块编辑" },
       -- 折叠操作
-      { "za", desc = "切换当前折叠" },
-      { "zA", desc = "递归切换折叠" },
-      { "zK", desc = "预览折叠内容" },
-      { "zc", desc = "关闭当前折叠" },
-      { "zC", desc = "递归关闭折叠" },
-      { "zo", desc = "打开当前折叠" },
-      { "zO", desc = "递归打开折叠" },
-      { "zM", desc = "关闭所有折叠" },
-      { "zR", desc = "打开所有折叠" },
-      { "zm", desc = "增加折叠层级" },
-      { "zr", desc = "减少折叠层级" },
-      { "zj", desc = "跳到下一个折叠" },
-      { "zk", desc = "跳到上一个折叠" },
-      { "zf", desc = "创建折叠", mode = { "n", "v" } },
-      { "zd", desc = "删除当前折叠" },
-      { "zD", desc = "递归删除折叠" },
-      { "zE", desc = "清除所有折叠" },
-      { "zi", desc = "切换折叠开关" },
-      { "zn", desc = "禁用折叠" },
-      { "zN", desc = "启用折叠" },
-      { "zx", desc = "刷新折叠" },
-      { "zX", desc = "重新应用折叠级别" },
+      { "za", desc = "折叠：切换当前层" },
+      { "zA", desc = "折叠：递归切换" },
+      { "zc", desc = "折叠：关闭当前层" },
+      { "zC", desc = "折叠：递归关闭" },
+      { "zo", desc = "折叠：打开当前层" },
+      { "zO", desc = "折叠：递归打开" },
+      { "zj", desc = "折叠：下一个折叠起点" },
+      { "zk", desc = "折叠：上一个折叠终点" },
+      { "zf", desc = "折叠：按移动/选区创建", mode = { "n", "v" } },
+      { "zF", desc = "折叠：创建 N 行折叠" },
+      { "zd", desc = "折叠：删除当前层（不可撤销）" },
+      { "zD", desc = "折叠：递归删除（不可撤销）" },
+      { "zE", desc = "折叠：删除窗口内全部（不可撤销）" },
+      { "zi", desc = "折叠：切换显示开关" },
+      { "zn", desc = "折叠：暂时显示全部" },
+      { "zN", desc = "折叠：恢复启用" },
+      { "zv", desc = "折叠：展开到光标可见" },
+      { "zx", desc = "折叠：重算层级并显示光标行" },
+      { "zX", desc = "折叠：重算并重新应用层级" },
       -- 视图/滚动
-      { "zz", desc = "当前行居中" },
-      { "zt", desc = "当前行置顶" },
-      { "zb", desc = "当前行置底" },
-      { "z.", desc = "居中并移到行首" },
-      { "z<CR>", desc = "置顶并移到行首" },
-      { "z-", desc = "置底并移到行首" },
-      { "zl", desc = "向右滚动" },
-      { "zh", desc = "向左滚动" },
-      { "zL", desc = "向右滚动半屏" },
-      { "zH", desc = "向左滚动半屏" },
-      { "ze", desc = "向右滚到行尾" },
-      { "zs", desc = "向左滚到行首" },
+      { "zt", desc = "视图：当前行置顶（保留列）" },
+      { "z<CR>", desc = "视图：当前行置顶并到首个非空白" },
+      { "zz", desc = "视图：当前行居中（保留列）" },
+      { "z.", desc = "视图：当前行居中并到首个非空白" },
+      { "zb", desc = "视图：当前行置底（保留列）" },
+      { "z-", desc = "视图：当前行置底并到首个非空白" },
+      { "z+", desc = "视图：下一屏置顶并到首个非空白" },
+      { "z^", desc = "视图：上一屏置底并到首个非空白" },
+      { "zh", desc = "视图：查看更左侧内容" },
+      { "zl", desc = "视图：查看更右侧内容" },
+      { "zH", desc = "视图：向左查看半屏" },
+      { "zL", desc = "视图：向右查看半屏" },
+      { "zs", desc = "视图：光标列对齐窗口左侧" },
+      { "ze", desc = "视图：光标列对齐窗口右侧" },
       -- 拼写
-      { "zg", desc = "标记为正确拼写" },
-      { "zw", desc = "标记为错误拼写" },
-      { "z=", desc = "拼写建议" },
+      { "z=", desc = "拼写：查看替换建议" },
+      { "zg", desc = "拼写：加入正确词表" },
+      { "zG", desc = "拼写：临时标为正确" },
+      { "zw", desc = "拼写：加入错误词表" },
+      { "zW", desc = "拼写：临时标为错误" },
+      { "zug", desc = "拼写：撤销词表标记" },
+      { "zuw", desc = "拼写：撤销词表标记" },
+      { "zuG", desc = "拼写：撤销临时标记" },
+      { "zuW", desc = "拼写：撤销临时标记" },
+      -- Neovim 0.12 块编辑；原生 zp 已明确让给 UFO 预览
+      { "zP", desc = "块编辑：向前粘贴且不补尾随空格" },
+      { "zy", desc = "块编辑：复制且忽略尾随空格", mode = { "n", "v" } },
 
       -- ========== [ 前缀：向前导航 ==========
       { "[", group = "向前跳转" },
@@ -208,78 +229,23 @@ return {
       { "]>", desc = "下一个 HTML 标签" },
       { "]%", desc = "下一个未匹配分组" },
 
-      -- ========== <leader> 基础操作 ==========
-      { "<leader>w", desc = "保存文件" },
-      { "<leader>q", desc = "退出" },
-      { "<leader>j", desc = "合并行" },
-      { "<leader>?", desc = "快捷键帮助" },
-      { "<leader>+", desc = "增大窗口" },
-      { "<leader>-", desc = "减小窗口" },
-      { "<leader>=", desc = "均分窗口" },
-      { "<leader>e", desc = "文件树" },
-      { "<leader>m", desc = "Mason 包管理" },
-      { "<leader>o", desc = "符号大纲" },
-      { "<leader>y", desc = "剪切板历史" },
-      -- <leader> 分组
-      { "<leader>a", group = "AI/Claude" },
+      -- ========== <leader> 分组 ==========
+      -- 叶子快捷键直接读取 vim.keymap.set / lazy.nvim keys 中的 desc，避免维护两份说明。
+      { "<leader>a", group = "AI" },
       { "<leader>b", group = "缓冲区" },
       { "<leader>c", group = "代码/CMake" },
-      { "<leader>d", group = "调试/诊断" },
-      { "<leader>f", group = "查找" },
+      { "<leader>d", group = "调试" },
+      { "<leader>f", group = "查找/文件" },
       { "<leader>g", group = "Git" },
       { "<leader>h", group = "Git 变更块" },
-      { "<leader>l", group = "标签/Grapple" },
+      { "<leader>J", group = "Java" },
       { "<leader>n", group = "笔记（Obsidian）" },
       { "<leader>P", group = "会话" },
       { "<leader>p", group = "Python/项目" },
-      { "<leader>r", group = "渲染" },
-      { "<leader>s", desc = "搜索替换（字面量）" },
-      { "<leader>S", desc = "搜索替换（正则）" },
-      { "<leader>t", group = "开关/终端" },
-      { "<leader>u", group = "UI/通知" },
-      { "<leader>tc", desc = "Copilot 开关" },
-      { "<leader>tu", desc = "撤销历史树" },
-      { "<leader>tf", desc = "浮动终端" },
-      { "<leader>tv", desc = "垂直终端" },
-      { "<leader>tg", desc = "Lazygit（已移至 <leader>gg）", hidden = true },
-      { "<leader>aa", desc = "接受 Claude Diff" },
-      { "<leader>ab", desc = "加入当前 Buffer" },
-      { "<leader>ac", desc = "打开/关闭 Claude Code" },
-      { "<leader>aC", desc = "继续 Claude 会话" },
-      { "<leader>ad", desc = "拒绝 Claude Diff" },
-      { "<leader>af", desc = "聚焦 Claude Code" },
-      { "<leader>am", desc = "选择 Claude 模型" },
-      { "<leader>ar", desc = "恢复 Claude 会话" },
-      { "<leader>as", desc = "发送选区给 Claude", mode = "v" },
-      { "<leader>pa", desc = "运行全部测试" },
-      { "<leader>pc", desc = "运行提交前检查" },
-      { "<leader>pC", desc = "运行 pre-commit 全量检查" },
-      { "<leader>pd", desc = "调试当前测试" },
-      { "<leader>pf", desc = "Ruff 格式检查" },
-      { "<leader>pl", desc = "重跑上次测试" },
-      { "<leader>pm", desc = "运行 mypy" },
-      { "<leader>po", desc = "项目任务面板" },
-      { "<leader>pO", desc = "测试输出面板" },
-      { "<leader>pr", desc = "Ruff 检查" },
-      { "<leader>pR", desc = "Ruff 自动修复" },
-      { "<leader>ps", desc = "测试结构面板" },
-      { "<leader>pt", desc = "运行当前 Python 测试" },
-      { "<leader>pT", desc = "运行当前文件测试" },
-      { "<leader>pv", desc = "选择 Python 虚拟环境" },
+      { "<leader>t", group = "工具/终端" },
+      { "<leader>u", group = "界面/通知" },
       { "<leader>M", group = "多光标" },
-      { "<leader>x", group = "诊断列表" },
-      -- Grapple 文件标签（数字键跳转）
-      { "<leader>ll", desc = "标记文件（Grapple）" },
-      { "<leader>lt", desc = "标签管理（Grapple）" },
-      { "<leader>1", desc = "Grapple 标签 1" },
-      { "<leader>2", desc = "Grapple 标签 2" },
-      { "<leader>3", desc = "Grapple 标签 3" },
-      { "<leader>4", desc = "Grapple 标签 4" },
-      { "<leader>5", desc = "Grapple 标签 5" },
-      { "<leader>6", desc = "Grapple 标签 6" },
-      { "<leader>7", desc = "Grapple 标签 7" },
-      { "<leader>8", desc = "Grapple 标签 8" },
-      { "<leader>9", desc = "Grapple 标签 9" },
+      { "<leader>x", group = "诊断/结构编辑" },
     })
   end,
 }

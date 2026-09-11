@@ -2,6 +2,7 @@
 -- 所有 LSP 共享的快捷键和功能（lspconfig / jdtls 等复用）
 
 local M = {}
+local lsp_hover = require("config.lsp-hover")
 
 function M.on_attach(client, bufnr)
   -- DiffView 等插件创建的 buffer 使用非 file:// URI，clangd 不支持，需要跳过
@@ -18,8 +19,8 @@ function M.on_attach(client, bufnr)
   -- 代码导航快捷键
   vim.keymap.set("n", "gd", function() Snacks.picker.lsp_definitions() end,
     vim.tbl_extend("force", opts, { desc = "跳转到定义" }))
-  vim.keymap.set("n", "gh", vim.lsp.buf.hover,
-    vim.tbl_extend("force", opts, { desc = "悬浮文档" }))
+  vim.keymap.set("n", "gh", lsp_hover.hover,
+    vim.tbl_extend("force", opts, { desc = "智能悬浮文档" }))
   vim.keymap.set("n", "grr", function() Snacks.picker.lsp_references() end,
     vim.tbl_extend("force", opts, { desc = "查找引用" }))
   vim.keymap.set({ "n", "v" }, "gra", vim.lsp.buf.code_action,

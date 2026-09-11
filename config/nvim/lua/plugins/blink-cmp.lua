@@ -53,11 +53,17 @@ return {
     sources = {
       default = { "lsp", "path", "snippets", "buffer" },
       per_filetype = {
+        lua = { inherit_defaults = true, "lazydev" },
         sql = { "dadbod", "snippets", "buffer" },
         mysql = { "dadbod", "snippets", "buffer" },
         plsql = { "dadbod", "snippets", "buffer" },
       },
       providers = {
+        lazydev = {
+          name = "LazyDev",
+          module = "lazydev.integrations.blink",
+          score_offset = 100,
+        },
         snippets = {
           opts = {
             search_paths = { vim.fn.stdpath("config") .. "/snippets" },

@@ -3,17 +3,16 @@
 
 local map = vim.keymap.set
 vim.g.mapleader = " "
+-- 逗号用于文件类型局部操作和 Grapple 文件标签；单按逗号会等待后续按键。
 vim.g.maplocalleader = ","
 -- which-key v3 通过 triggers 配置自动拦截 <leader>，无需手动映射 Space
--- 让 Ctrl+[ 在常用模式下都等价于 Esc
-map({ "n", "v", "i" }, "<C-[>", "<Esc>", { silent = true, desc = "退出到普通模式" })
 
 -- ========== 基础操作 ==========
 -- 快速保存
 map('n', '<Leader>w', '<cmd>w<cr>', { desc = "保存文件" })
 
 -- 快速退出
-map('n', '<Leader>q', '<cmd>q<cr>', { desc = "退出" })
+map('n', '<Leader>q', '<cmd>q<cr>', { desc = "关闭当前窗口" })
 
 -- 手动唤起 which-key（兜底）
 -- 注意：不要在这里直接调用 wk.show()，避免递归触发
@@ -53,10 +52,6 @@ map('n', '<A-L>', '<cmd>vertical resize +' .. resize_step .. '<cr>', { desc = "�
 map('n', '<A-J>', '<cmd>resize -' .. resize_step .. '<cr>', { desc = "减小窗口高度" })
 map('n', '<A-K>', '<cmd>resize +' .. resize_step .. '<cr>', { desc = "增大窗口高度" })
 
--- ========== 复制增强 ==========
--- Y 复制到行尾（更符合 D/C 的逻辑）
-map('n', 'Y', 'y$', { desc = "复制到行尾" })
-
 -- ========== 可视模式 ==========
 -- 在可视模式下保持选中状态缩进
 map('v', '<', '<gv', { desc = "左缩进并保持选中" })
@@ -71,13 +66,10 @@ map('v', '<A-k>', ":m '<-2<CR>gv=gv", { desc = "向上移动选中行" })
 
 -- ========== LSP 诊断 ==========
 -- 查看当前行的详细报错信息（浮窗）
-map('n', '<Leader>dd', vim.diagnostic.open_float, { desc = "查看报错详情" })
+map('n', '<Leader>xl', vim.diagnostic.open_float, { desc = "查看当前行诊断" })
 -- 跳转到上/下一个报错（Neovim 0.11+ 推荐 diagnostic.jump）
 map('n', '[d', function() vim.diagnostic.jump({ count = -1 }) end, { desc = "上一个报错" })
 map('n', ']d', function() vim.diagnostic.jump({ count = 1 }) end, { desc = "下一个报错" })
--- 列出当前文件所有报错
-map('n', '<Leader>dl', vim.diagnostic.setloclist, { desc = "报错列表" })
-
 -- ========== 缓冲区管理 ==========
 -- 用 Snacks.bufdelete 而非原生 :bdelete，关闭缓冲区时保持窗口布局不变
 map('n', '<Leader>bd', function() Snacks.bufdelete() end, { desc = "关闭当前缓冲区" })

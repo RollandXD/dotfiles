@@ -10,16 +10,17 @@ return {
       transparent_background = false,  -- 透明背景
       integrations = {
         aerial = true,
-        cmp = true,
+        blink_cmp = { style = "bordered" },
         dap = true,
         dap_ui = true,
         flash = true,
         gitsigns = true,
         lualine = {},
+        markview = true,
         noice = true,
         notify = true,
+        snacks = { enabled = true },
         treesitter = true,
-        telescope = { enabled = true },
         which_key = true,
         navic = { enabled = true },
         -- 后续可按需启用更多集成
@@ -29,7 +30,7 @@ return {
     -- 应用主题
     vim.cmd.colorscheme("catppuccin")
 
-    -- LSP 变量高亮（与 Visual 选中区分开，用 Mocha 青色系）
+    -- LSP 变量高亮（与 Visual 选中区分开，用青色系）
     vim.api.nvim_set_hl(0, "LspReferenceText",  { bg = "#314153" })
     vim.api.nvim_set_hl(0, "LspReferenceRead",  { bg = "#314153" })
     vim.api.nvim_set_hl(0, "LspReferenceWrite", { bg = "#3d3b58" })

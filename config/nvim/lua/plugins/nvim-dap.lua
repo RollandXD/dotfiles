@@ -13,10 +13,7 @@ return {
       { "<F10>", function() require('dap').step_over() end, desc = "单步跳过" },
       { "<F11>", function() require('dap').step_into() end, desc = "单步进入" },
       { "<S-F11>", function() require('dap').step_out() end, desc = "单步跳出" },
-      { "<F6>", function() require('dap').continue() end, desc = "继续执行" },
-      { "<leader>db", function() require('dap').toggle_breakpoint() end, desc = "切换断点" },
       { "<leader>dB", function() require("dap").set_breakpoint(vim.fn.input("断点条件: ")) end, desc = "条件断点" },
-      { "<leader>dc", function() require('dap').continue() end, desc = "继续" },
       { "<leader>dr", function() require("dap").run_last() end, desc = "重运行上次调试" },
       { "<leader>dt", function() require('dap').terminate() end, desc = "终止调试" },
       { "<leader>da", function()
@@ -31,14 +28,9 @@ return {
         })
       end, desc = "带参数运行" },
       { "<leader>dC", function() require('dap').run_to_cursor() end, desc = "运行到光标" },
-      { "<leader>dg", function() require('dap').goto_() end, desc = "跳到指定行" },
-      { "<leader>di", function() require('dap').step_into() end, desc = "单步进入" },
       { "<leader>dj", function() require('dap').down() end, desc = "调用栈向下" },
       { "<leader>dk", function() require('dap').up() end, desc = "调用栈向上" },
-      { "<leader>do", function() require('dap').step_out() end, desc = "单步跳出" },
-      { "<leader>dO", function() require('dap').step_over() end, desc = "单步跳过" },
       { "<leader>dP", function() require('dap').pause() end, desc = "暂停" },
-      { "<leader>ds", function() require('dap').session() end, desc = "查看会话" },
       { "<leader>dw", function() require('dap.ui.widgets').hover() end, desc = "悬浮查看变量" },
       { "<leader>dl", function()
         require('dap').set_breakpoint(nil, nil, vim.fn.input("日志消息: "))
@@ -133,29 +125,15 @@ return {
         },
       }
 
-      -- Java 调试适配器配置
+      -- Java 启动配置由 nvim-jdtls 动态发现主类；这里只保留远程附加入口。
       dap.configurations.java = {
         {
-          type = 'java',
-          request = 'launch',
-          name = "启动当前 Java 文件",
-          mainClass = "${file}",  -- 运行当前文件
-        },
-        {
-          type = 'java',
-          request = 'launch',
-          name = "启动 Java 程序（指定主类）",
-          mainClass = function()
-            return vim.fn.input('主类名（如 com.example.Main）: ')
-          end,
-        },
-        {
-          type = 'java',
-          request = 'attach',
+          type = "java",
+          request = "attach",
           name = "附加到远程 Java 进程",
           hostName = "localhost",
           port = function()
-            return tonumber(vim.fn.input('调试端口: ', '5005'))
+            return tonumber(vim.fn.input("调试端口: ", "5005"))
           end,
         },
       }
@@ -214,23 +192,6 @@ return {
       dap.configurations.cpp = cpp_configs
       dap.configurations.c = cpp_configs
 
-      -- 支持加载 .vscode/launch.json（处理 JSONC 注释格式）
-      local vscode_ok, vscode_dap = pcall(require, "dap.ext.vscode")
-      if vscode_ok then
-        vscode_dap.json_decode = function(str)
-          return vim.json.decode(str:gsub("//[^\n]*", ""))
-        end
-      end
-
-      -- Java 调试适配器（通过 nvim-jdtls 集成）
-      dap.adapters.java = function(callback)
-        -- nvim-jdtls 会自动配置调试适配器
-        callback({
-          type = 'server',
-          host = '127.0.0.1',
-          port = 5005,
-        })
-      end
     end
   },
 
@@ -329,8 +290,8 @@ return {
     lazy = true, -- 由 nvim-dap 的 dependencies 拉起（首次按 F5/F9 等调试键时）
     dependencies = { "williamboman/mason.nvim" },
     opts = {
-      ensure_installed = { "codelldb", "debugpy" },
-      automatic_installation = true,
+      -- mason-nvim-dap 使用 DAP source 名，而不是 Mason 包名。
+      ensure_installed = { "codelldb", "javadbg", "python" },
     },
   },
 

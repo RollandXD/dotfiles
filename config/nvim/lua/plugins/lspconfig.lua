@@ -1,6 +1,6 @@
 return {
   "neovim/nvim-lspconfig",
-  lazy = false,
+  event = { "BufReadPre", "BufNewFile" },
   dependencies = {
     "williamboman/mason.nvim",
     "williamboman/mason-lspconfig.nvim",
@@ -9,9 +9,18 @@ return {
   config = function()
     -- 安装 mason-lspconfig
     require("mason-lspconfig").setup({
-      -- 自动安装的 LSP 服务器
-      ensure_installed = { "jdtls", "clangd", "pyright", "yamlls", "taplo", "ruff", "jedi_language_server" },  -- Java / C++ / Python(+jedi 补 hover) + 配置文件 LSP（cmake-language-server 由 pacman 管理）
-      automatic_installation = true,
+      -- CMake LSP 由 pacman 管理，其余服务器交给 Mason。
+      ensure_installed = {
+        "clangd",
+        "jdtls",
+        "jedi_language_server",
+        "jsonls",
+        "lua_ls",
+        "pyright",
+        "ruff",
+        "taplo",
+        "yamlls",
+      },
       automatic_enable = false,
     })
 
@@ -24,7 +33,7 @@ return {
         or title:find("implement", 1, true) ~= nil
     end
 
-    local function createCppImplementation()
+    local function create_cpp_implementation()
       -- 优先用 nt-cpp-tools（Treesitter，不依赖 clangd 索引），失败回退到 clangd
       local ok = pcall(vim.cmd, "TSCppImplWrite")
       if ok then
@@ -49,10 +58,10 @@ return {
     -- vim.lsp.diagnostic.get_namespace() 返回的是不带 identifier 后缀的那个，对不上，
     -- 所以这里按名字前缀匹配；namespace 要等第一批诊断到达才创建，因此挂在 DiagnosticChanged 上。
     local muted_ns = {}
+    local at_least_info = { min = vim.diagnostic.severity.INFO }
     vim.api.nvim_create_autocmd("DiagnosticChanged", {
       group = vim.api.nvim_create_augroup("UserMutePyrightHints", { clear = true }),
       callback = function()
-        local at_least_info = { min = vim.diagnostic.severity.INFO }
         for name, ns in pairs(vim.api.nvim_get_namespaces()) do
           if not muted_ns[ns] and name:match("^nvim%.lsp%.pyright%.%d+") then
             muted_ns[ns] = true
@@ -71,40 +80,48 @@ return {
       lsp_on_attach.on_attach(client, bufnr)
 
       -- ===== Python 三个 server 的分工（避免能力重叠导致补全重复、gd 弹选择列表）=====
-      -- pyright: 类型检查 / 补全 / 跳转 / 重命名   jedi: 只做 hover   ruff: 只做 lint 诊断 + code action
+      -- pyright: 类型检查 / 补全 / 跳转 / 重命名 / 标准 hover
+      -- jedi: 仅供智能 gh 在 Pyright 无正文时定向请求运行时文档
+      -- ruff: 只做 lint 诊断 + code action
       local sc = client.server_capabilities
 
-      -- pyright 交出 hover，交给 jedi（jedi 能读运行时 __doc__，补上 pyright 对 builtins 缺失的 docstring）
-      if client.name == "pyright" then
-        sc.hoverProvider = false
-      end
-
-      -- jedi 只保留 hover，其余能力全部交还 pyright，否则补全项与定义位置都会出现两份
+      -- Jedi 不公开参与原生 hover，避免和 Pyright 拼出两份结果；智能 gh 仍可直接向它发请求。
+      -- 其他能力也全部交还 Pyright，否则补全项与定义位置都会出现两份。
       if client.name == "jedi_language_server" then
-        sc.completionProvider = nil
-        sc.signatureHelpProvider = nil
-        sc.definitionProvider = false
-        sc.typeDefinitionProvider = false
-        sc.declarationProvider = false
-        sc.implementationProvider = false
-        sc.referencesProvider = false
-        sc.renameProvider = false
-        sc.documentSymbolProvider = false
-        sc.workspaceSymbolProvider = false
-        sc.codeActionProvider = false
-        sc.documentHighlightProvider = false
-        sc.inlayHintProvider = false
+        sc.hoverProvider = false
+        for _, capability in ipairs({ "completionProvider", "signatureHelpProvider" }) do
+          sc[capability] = nil
+        end
+        for _, capability in ipairs({
+          "codeActionProvider",
+          "declarationProvider",
+          "definitionProvider",
+          "documentHighlightProvider",
+          "documentSymbolProvider",
+          "implementationProvider",
+          "inlayHintProvider",
+          "referencesProvider",
+          "renameProvider",
+          "typeDefinitionProvider",
+          "workspaceSymbolProvider",
+        }) do
+          sc[capability] = false
+        end
       end
 
       -- ruff 只做 lint 诊断和 code action（自动删未用 import 等），格式化仍走 conform
       if client.name == "ruff" then
-        sc.hoverProvider = false
         sc.completionProvider = nil
-        sc.definitionProvider = false
-        sc.referencesProvider = false
-        sc.renameProvider = false
-        sc.documentFormattingProvider = false
-        sc.documentRangeFormattingProvider = false
+        for _, capability in ipairs({
+          "definitionProvider",
+          "documentFormattingProvider",
+          "documentRangeFormattingProvider",
+          "hoverProvider",
+          "referencesProvider",
+          "renameProvider",
+        }) do
+          sc[capability] = false
+        end
       end
 
       -- clangd 专属快捷键
@@ -120,7 +137,7 @@ return {
             vim.cmd("edit " .. vim.uri_to_fname(result))
           end, bufnr)
         end, vim.tbl_extend("force", opts, { desc = "切换头/源文件" }))
-        vim.keymap.set("n", "<leader>ci", createCppImplementation,
+        vim.keymap.set("n", "<leader>ci", create_cpp_implementation,
           vim.tbl_extend("force", opts, { desc = "为声明生成定义" }))
       end
     end
@@ -145,7 +162,6 @@ return {
           },
           workspace = {
             checkThirdParty = false,
-            library = { vim.env.VIMRUNTIME },
           },
           telemetry = { enable = false },
         },
@@ -187,43 +203,46 @@ return {
       capabilities = capabilities,
     })
 
-    -- JSON LSP 配置（支持 SchemaStore 自动加载常见配置文件的 schema）
-    local json_schemas = {}
-    local schemastore_ok, schemastore = pcall(require, "schemastore")
-    if schemastore_ok then
-      json_schemas = schemastore.json.schemas()
+    -- JSON/YAML 的 SchemaStore 目录只在对应服务器真正启动时加载。
+    local function add_schemastore(kind)
+      return function(_, config)
+        local ok, schemastore = pcall(require, "schemastore")
+        if ok then
+          config.settings[kind].schemas = schemastore[kind].schemas()
+        end
+      end
     end
+
+    -- JSON LSP 配置（支持 SchemaStore 自动加载常见配置文件的 schema）
     vim.lsp.config("jsonls", {
       cmd = { "vscode-json-language-server", "--stdio" },
       filetypes = { "json", "jsonc" },
       on_attach = on_attach,
       capabilities = capabilities,
+      before_init = add_schemastore("json"),
       settings = {
         json = {
-          schemas = json_schemas,
+          schemas = {},
           validate = { enable = true },
         },
       },
     })
 
     -- YAML LSP 配置（pre-commit / GitHub Actions 等）
-    local yaml_schemas = {}
-    if schemastore_ok and schemastore.yaml then
-      yaml_schemas = schemastore.yaml.schemas()
-    end
     vim.lsp.config("yamlls", {
       cmd = { "yaml-language-server", "--stdio" },
       filetypes = { "yaml", "yaml.docker-compose", "yaml.gitlab" },
       root_markers = { ".pre-commit-config.yaml", ".github", ".git" },
       on_attach = on_attach,
       capabilities = capabilities,
+      before_init = add_schemastore("yaml"),
       settings = {
         yaml = {
           schemaStore = {
             enable = false,
             url = "",
           },
-          schemas = yaml_schemas,
+          schemas = {},
           validate = true,
           hover = true,
           completion = true,
@@ -259,7 +278,6 @@ return {
       end,
       settings = {
         python = {
-          pythonPath = python_tools.python_path(),
           analysis = {
             autoSearchPaths = true,
             diagnosticMode = "workspace",
@@ -275,7 +293,7 @@ return {
     -- 自己的 pyproject.toml / ruff.toml，所以用哪个二进制对结果影响很小。
     -- 真正需要项目内 ruff 版本的场景（conform 格式化、CLI 任务）都已走 python_tools.executable。
     vim.lsp.config("ruff", {
-      cmd = { python_tools.executable("ruff"), "server" },
+      cmd = { vim.fs.joinpath(vim.fn.stdpath("data"), "mason", "bin", "ruff"), "server" },
       filetypes = { "python" },
       root_markers = { "pyproject.toml", "ruff.toml", ".ruff.toml", "setup.py", "setup.cfg", ".git" },
       on_attach = on_attach,
@@ -302,14 +320,16 @@ return {
     })
 
     -- 自动启用 LSP（当打开对应文件类型时）
-    vim.lsp.enable("lua_ls")
-    vim.lsp.enable("clangd")
-    vim.lsp.enable("cmake")
-    vim.lsp.enable("jsonls")
-    vim.lsp.enable("yamlls")
-    vim.lsp.enable("taplo")
-    vim.lsp.enable("pyright")
-    vim.lsp.enable("jedi_language_server")
-    vim.lsp.enable("ruff")
+    vim.lsp.enable({
+      "clangd",
+      "cmake",
+      "jedi_language_server",
+      "jsonls",
+      "lua_ls",
+      "pyright",
+      "ruff",
+      "taplo",
+      "yamlls",
+    })
   end,
 }

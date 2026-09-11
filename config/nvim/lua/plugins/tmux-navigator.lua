@@ -13,4 +13,19 @@ return {
     { "<A-k>", "<cmd>TmuxNavigateUp<cr>", desc = "移动到上方窗口/pane" },
     { "<A-l>", "<cmd>TmuxNavigateRight<cr>", desc = "移动到右侧窗口/pane" },
   },
+  config = function()
+    local navigation = {
+      ["<A-h>"] = { command = "TmuxNavigateLeft", desc = "移动到左侧窗口/pane" },
+      ["<A-j>"] = { command = "TmuxNavigateDown", desc = "移动到下方窗口/pane" },
+      ["<A-k>"] = { command = "TmuxNavigateUp", desc = "移动到上方窗口/pane" },
+      ["<A-l>"] = { command = "TmuxNavigateRight", desc = "移动到右侧窗口/pane" },
+    }
+
+    for key, item in pairs(navigation) do
+      vim.keymap.set("t", key, function()
+        vim.cmd("stopinsert")
+        vim.cmd(item.command)
+      end, { desc = item.desc })
+    end
+  end,
 }

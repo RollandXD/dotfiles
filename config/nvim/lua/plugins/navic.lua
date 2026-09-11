@@ -1,7 +1,6 @@
 return {
   "SmiteshP/nvim-navic",
-  dependencies = { "neovim/nvim-lspconfig" },
-  lazy = true,
+  event = "LspAttach",
   opts = {
     lsp = { auto_attach = true },
     highlight = true,
