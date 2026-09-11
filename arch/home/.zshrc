@@ -211,6 +211,7 @@ function y() {
 
 # opencode
 export PATH=/home/rolland/.opencode/bin:$PATH
+alias oc='opencode --port'
 
 # context7 API key（密钥存在仓库外，仅本机可读；见 ~/.agents/README.md）
 [ -r ~/.config/context7/env ] && source ~/.config/context7/env
