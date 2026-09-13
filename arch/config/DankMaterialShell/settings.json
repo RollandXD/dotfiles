@@ -63,6 +63,7 @@
   },
   "dankLauncherV2Size": "micro",
   "networkPreference": "wifi",
+  "iconThemePerMode": true,
   "cursorSettings": {
     "theme": "System Default",
     "size": 24,
