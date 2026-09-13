@@ -160,17 +160,16 @@ overview {
 // See the binds section below for more spawn examples.
 // This line starts waybar, a commonly used bar for Wayland compositors.
 environment {
-// qt theme
-QT_QPA_PLATFORMTHEME "gtk3"
-QT_QPA_PLATFORMTHEME_QT6 "gtk3"
-// fix quickshell icon theme missing
-QS_ICON_THEME "Adwaita"
+// Qt 平台主题：qt6ct，配色由 DMS 的 matugen 模板生成到 ~/.config/qt6ct
+// （原先的 QT_QPA_PLATFORMTHEME_QT6 不是标准变量，已移除）
+QT_QPA_PLATFORMTHEME "qt6ct"
     XMODIFIERS "@im=fcitx"
     QT_IM_MODULE "fcitx"
     LANG "zh_CN.UTF-8"
   XDG_CURRENT_DESKTOP "niri"
-// fix GTK tooltip colors in light mode
-GTK_THEME "Adwaita"
+// 注：此处曾设 QS_ICON_THEME "Adwaita" 与 GTK_THEME "Adwaita"，用于修 quickshell
+// 图标缺失与 GTK tooltip 颜色。DMS 1.6 的主题系统会自行处理 GTK3/GTK4 与图标
+// 主题，这两个全局覆盖会顶掉它，故移除。若 tooltip 颜色问题回归，再针对性处理。
 }
 hotkey-overlay {
     skip-at-startup
