@@ -178,6 +178,18 @@ if is_arch; then
     mkdir -p "$HOME/.config/DankMaterialShell"
     link_file "$DOTFILES_DIR/arch/config/DankMaterialShell/settings.json" "$HOME/.config/DankMaterialShell/settings.json"
     link_file "$DOTFILES_DIR/arch/config/DankMaterialShell/firefox.css" "$HOME/.config/DankMaterialShell/firefox.css"
+    link_file "$DOTFILES_DIR/arch/config/DankMaterialShell/plugin_settings.json" "$HOME/.config/DankMaterialShell/plugin_settings.json"
+
+    # DMS 插件逐个链接（不整目录链接：DMS 会往 plugins/ 里安装新插件，
+    # 整目录链接会让新装的插件直接落进仓库）
+    if [ -d "$DOTFILES_DIR/arch/config/DankMaterialShell/plugins" ]; then
+        mkdir -p "$HOME/.config/DankMaterialShell/plugins"
+        for plugin_src in "$DOTFILES_DIR/arch/config/DankMaterialShell/plugins"/*/; do
+            [ -d "$plugin_src" ] || continue
+            plugin_name="$(basename "$plugin_src")"
+            link_file "${plugin_src%/}" "$HOME/.config/DankMaterialShell/plugins/$plugin_name"
+        done
+    fi
 
     link_file "$DOTFILES_DIR/arch/local/share/konsole/catppuccin.profile" "$HOME/.local/share/konsole/catppuccin.profile"
     link_file "$DOTFILES_DIR/arch/local/share/konsole/catppuccin-mocha.colorscheme" "$HOME/.local/share/konsole/catppuccin-mocha.colorscheme"
