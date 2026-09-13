@@ -165,8 +165,8 @@ QT_QPA_PLATFORMTHEME "gtk3"
 QT_QPA_PLATFORMTHEME_QT6 "gtk3"
 // fix quickshell icon theme missing
 QS_ICON_THEME "Adwaita"
-    LC_CTYPE "en_US.UTF-8"
     XMODIFIERS "@im=fcitx"
+    QT_IM_MODULE "fcitx"
     LANG "zh_CN.UTF-8"
   XDG_CURRENT_DESKTOP "niri"
 // fix GTK tooltip colors in light mode
@@ -288,11 +288,11 @@ include "dms/outputs.kdl"
 include "dms/cursor.kdl"
 spawn-at-startup "xhost" "+si:localuser:root"
 spawn-at-startup "fcitx5" "-d"
-spawn-at-startup "wechat"
-spawn-at-startup "linuxqq"
+spawn-at-startup "env" "GTK_IM_MODULE=fcitx" "QT_IM_MODULE=fcitx" "XMODIFIERS=@im=fcitx" "LC_CTYPE=zh_CN.UTF-8" "wechat"
+spawn-at-startup "env" "GTK_IM_MODULE=fcitx" "QT_IM_MODULE=fcitx" "XMODIFIERS=@im=fcitx" "LC_CTYPE=zh_CN.UTF-8" "linuxqq"
 // disabled by Codex 2026-06-29: voxtype caused suspicious PipeWire playback stream
 // spawn-at-startup "voxtype" "daemon"
-spawn-sh-at-startup "dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP=niri XMODIFIERS GTK_IM_MODULE QT_IM_MODULE & /usr/lib/xdg-desktop-portal-gnome"
+spawn-sh-at-startup "dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP=niri XMODIFIERS QT_IM_MODULE & /usr/lib/xdg-desktop-portal-gnome"
 spawn-at-startup "~/.config/niri/shorin-niri/scripts/screenshot-sound.sh"
 include "shorin-niri/rule.kdl"
 include "shorin-niri/supertab.kdl"
@@ -303,3 +303,4 @@ cursor {
     xcursor-size 30
     hide-after-inactive-ms 15000
 }
+include "dms/input.kdl"
