@@ -1,4 +1,67 @@
 git:
-  pagers:
+  disableForcePushing: true
+  diffRenderers:
     - colorArg: always
-      pager: delta --paging=never
+      command: delta --paging=never
+
+gui:
+  filterMode: fuzzy
+  sidePanelWidth: 0.27
+  expandFocusedSidePanel: true
+  showNumstatInFilesView: true
+  showRandomTip: false
+  showIcons: true
+  nerdFontsVersion: "3"
+  theme:
+    activeBorderColor: ["#89b4fa", bold]
+    inactiveBorderColor: ["#a6adc8"]
+    searchingActiveBorderColor: ["#f9e2af"]
+    optionsTextColor: ["#89b4fa"]
+    selectedLineBgColor: ["#313244"]
+    inactiveViewSelectedLineBgColor: ["#6c7086"]
+    cherryPickedCommitFgColor: ["#89b4fa"]
+    cherryPickedCommitBgColor: ["#45475a"]
+    markedBaseCommitFgColor: ["#89b4fa"]
+    markedBaseCommitBgColor: ["#f9e2af"]
+    unstagedChangesColor: ["#f38ba8"]
+    defaultFgColor: ["#cdd6f4"]
+
+# Lazygit 没有插件管理器；这里用内置 customCommands 调用已安装的 gh CLI。
+# 在分支面板按 X 打开菜单；? 会显示完整说明。
+customCommands:
+  - key: X
+    description: "GitHub 工作流"
+    commandMenu:
+      - key: s
+        context: global
+        description: "查看当前 PR 状态"
+        command: "gh pr status"
+        output: terminal
+      - key: o
+        context: localBranches
+        description: "在浏览器打开当前分支 PR"
+        command: "gh pr view --web {{ .SelectedLocalBranch.Name | quote }}"
+        output: terminal
+      - key: c
+        context: localBranches
+        description: "查看当前分支 CI 检查"
+        command: "gh pr checks {{ .SelectedLocalBranch.Name | quote }}"
+        output: terminal
+      - key: v
+        context: localBranches
+        description: "查看当前分支 PR 详情"
+        command: "gh pr view {{ .SelectedLocalBranch.Name | quote }}"
+        output: terminal
+
+update:
+  method: background
+
+disableStartupPopups: true
+
+os:
+  # Keep the normal edit action inside Lazygit's terminal-suspension flow.
+  editPreset: nvim
+  editInTerminal: true
+  # The system text handler is terminal-based nvim. Detach Kitty so `o`
+  # cannot make xdg-open and Lazygit compete for the same TTY.
+  open: 'kitty --detach --single-instance=no nvim -- "{{filename}}"'
