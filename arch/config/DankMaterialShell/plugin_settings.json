@@ -1,1 +1,1 @@
-{"storageMonitor": {"enabled": true}, "aiUsage": {"enabled": true, "refreshInterval": 2, "codexAuthFile": "~/.codex-plus/auth.json"}}
+{"storageMonitor": {"enabled": true}, "aiUsage": {"enabled": true, "refreshInterval": 2, "codexAuthFile": "~/.codex/auth.json"}}
