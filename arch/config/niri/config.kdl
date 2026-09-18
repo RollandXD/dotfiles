@@ -287,7 +287,7 @@ include "dms/outputs.kdl"
 include "dms/cursor.kdl"
 spawn-at-startup "xhost" "+si:localuser:root"
 spawn-at-startup "fcitx5" "-d"
-spawn-at-startup "env" "GTK_IM_MODULE=fcitx" "QT_IM_MODULE=fcitx" "XMODIFIERS=@im=fcitx" "LC_CTYPE=zh_CN.UTF-8" "wechat"
+spawn-at-startup "env" "GTK_IM_MODULE=fcitx" "QT_IM_MODULE=fcitx" "XMODIFIERS=@im=fcitx" "LC_CTYPE=zh_CN.UTF-8" "QT_QPA_PLATFORM=xcb" "wechat"
 spawn-at-startup "env" "GTK_IM_MODULE=fcitx" "QT_IM_MODULE=fcitx" "XMODIFIERS=@im=fcitx" "LC_CTYPE=zh_CN.UTF-8" "linuxqq"
 // disabled by Codex 2026-06-29: voxtype caused suspicious PipeWire playback stream
 // spawn-at-startup "voxtype" "daemon"
@@ -303,3 +303,5 @@ cursor {
     hide-after-inactive-ms 15000
 }
 include "dms/input.kdl"
+include "dms/windowrules.kdl"
+include "shorin-niri/binds.kdl"

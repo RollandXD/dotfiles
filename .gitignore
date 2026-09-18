@@ -39,7 +39,7 @@ Thumbs.db
 
 # DMS 自动生成的 niri 配置：由 DMS 重写，纳入版本控制只会产生噪音 diff。
 # 真实偏好存在 DMS 的 settings.json / session.json 里，换机时 DMS 会自行重建。
-# binds.kdl 例外——它是手工整合版（Shorin 核心快捷键 + DMS 功能），必须追踪。
+# binds.kdl 例外——保留 DMS 基础快捷键与本机 DMS 映射；个人快捷键移至 shorin-niri/binds.kdl。
 arch/config/niri/dms/*.kdl
 !arch/config/niri/dms/binds.kdl
 
