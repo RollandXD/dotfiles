@@ -216,12 +216,5 @@ alias oc='opencode --port'
 # context7 API key（密钥存在仓库外，仅本机可读；见 ~/.agents/README.md）
 [ -r ~/.config/context7/env ] && source ~/.config/context7/env
 
-# Codex strategy homes: the normal command uses the imported Plus strategy.
-# Use codex-current when you want to compare or restore the saved routing.
-export CODEX_HOME="$HOME/.codex-plus"
-codex-plus() {
-  env CODEX_HOME="$HOME/.codex-plus" /home/rolland/.npm-global/bin/codex "$@"
-}
-codex-current() {
-  env CODEX_HOME="$HOME/.codex-current" /home/rolland/.npm-global/bin/codex "$@"
-}
+# Codex uses the unified Plus strategy home.
+export CODEX_HOME="$HOME/.codex"
