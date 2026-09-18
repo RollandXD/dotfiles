@@ -5,19 +5,6 @@ max_height = 1800
 [manager]
 linemode = "size"
 
-# git 插件：显示文件 git 状态
-[[plugin.prepend_fetchers]]
-id    = "git"
-url   = "*"
-run   = "git"
-group = "git"
-
-[[plugin.prepend_fetchers]]
-id    = "git"
-url   = "*/"
-run   = "git"
-group = "git"
-
 # eza 目录树预览
 [[plugin.prepend_previewers]]
 url = "*/"
