@@ -57,11 +57,17 @@
   ],
   "showWorkspaceApps": true,
   "workspaceFocusedBorderColor": "surfaceText",
+  "mediaUseAlbumArtAccent": true,
+  "appleMusicAnimatedArtEnabled": true,
   "centeringMode": "geometric",
   "spotlightSectionViewModes": {
     "apps": "list"
   },
+  "appDrawerSectionViewModes": {
+    "apps": "list"
+  },
   "dankLauncherV2Size": "micro",
+  "launcherStyle": "island",
   "networkPreference": "wifi",
   "iconThemePerMode": true,
   "cursorSettings": {
@@ -85,6 +91,8 @@
   "monoFontFamily": "JetBrainsMono NF",
   "fontScale": 1.25,
   "acSuspendBehavior": 1,
+  "batteryProfileName": "0",
+  "lowerDisplayRefreshRateOnBattery": true,
   "dockAutoHide": true,
   "dockOpenOnOverview": true,
   "dockSpacing": 7,
@@ -155,6 +163,10 @@
       ],
       "rightWidgets": [
         {
+          "id": "aiUsage",
+          "enabled": true
+        },
+        {
           "id": "systemTray",
           "enabled": true
         },
@@ -197,7 +209,7 @@
       "innerPadding": 4,
       "bottomGap": 0,
       "transparency": 0.29,
-      "widgetTransparency": 0.83,
+      "widgetTransparency": 0.5,
       "squareCorners": false,
       "noBackground": false,
       "maximizeWidgetIcons": false,
@@ -234,10 +246,62 @@
       "shadowCustomColor": "#000000",
       "clickThrough": false,
       "attachToScreenEdge": false,
-      "island": false,
       "islandFloating": false,
       "islandUseOverlayLayer": false,
-      "hoverPopouts": false
+      "hoverPopouts": false,
+      "batteryColorMode": "theme",
+      "islandNotificationExpand": false,
+      "islandHomeClockDisplay": "time",
+      "islandPalette": "default",
+      "islandHighContrast": false,
+      "islandMediaClockVisible": true,
+      "islandSatelliteBackground": true,
+      "islandSatelliteGothCorners": false,
+      "islandSatelliteTransparency": 0.55,
+      "islandSatellitePosition": "edges",
+      "islandInteractionMode": "click",
+      "islandHoverOpenDelay": 500,
+      "island": true,
+      "islandReserveThickness": 40,
+      "islandCompactThickness": 24,
+      "islandOuterGap": 6,
+      "islandAlongOffset": 0,
+      "islandHomeLayout": [
+        {
+          "id": "clock",
+          "enabled": true
+        },
+        {
+          "id": "notifications",
+          "enabled": true
+        },
+        {
+          "id": "media",
+          "enabled": false
+        },
+        {
+          "id": "weather",
+          "enabled": false
+        },
+        {
+          "id": "status",
+          "enabled": false
+        },
+        {
+          "id": "volume",
+          "enabled": false
+        },
+        {
+          "id": "brightness",
+          "enabled": false
+        }
+      ],
+      "islandHomeCompactTight": false,
+      "islandTransparency": 0.75,
+      "islandCornerRadius": 34,
+      "islandBatteryStyle": "solid",
+      "islandNotificationBadgeClearOnOpen": true,
+      "islandSpringDamping": 37
     }
   ],
   "desktopClockCustomColor": {
