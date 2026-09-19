@@ -67,7 +67,8 @@ ln -sfn "$DOTFILES_DIR/arch/config/DankMaterialShell/plugins/storageMonitor" \
 ln -sf "$DOTFILES_DIR/arch/config/DankMaterialShell/plugin_settings.json" \
        "$HOME/.config/DankMaterialShell/plugin_settings.json"
 
-# 截图 OCR：脚本纳入 dotfiles，模型放 XDG 数据目录，不把 40+ MiB 二进制提交进仓库
+# 截图 OCR：脚本纳入 dotfiles，模型放 XDG 数据目录，不把 40+ MiB 二进制提交进仓库。
+# dank-ocr 默认走 RapidOCR（uv tool，模型随包分发），不可用时自动回退 Tesseract。
 mkdir -p "$HOME/.local/bin"
 ln -sf "$DOTFILES_DIR/arch/local/bin/dank-ocr" \
        "$HOME/.local/bin/dank-ocr"

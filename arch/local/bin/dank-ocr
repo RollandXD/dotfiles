@@ -1,22 +1,25 @@
 #!/usr/bin/env bash
-# dank-ocr v2 — 框选屏幕区域，OCR 成文字送进剪贴板
+# dank-ocr v3 — 框选屏幕区域，OCR 成文字送进剪贴板
 #
-# 基线：Tesseract 5.5.3 + tessdata_best（固定版见 install-dank-ocr-models）
+# 引擎：默认 RapidOCR（PP-OCRv6 + ONNX Runtime，包装脚本 dank-ocr-rapidocr.py）；
+#       不可用时自动回退 Tesseract 5.5.3 + tessdata_best（见 install-dank-ocr-models）。
 #
-#   dank-ocr                    中英混排，按单个文本块识别（PSM 6）
-#   dank-ocr -e                 纯英文；适合代码、报错和英文文档
-#   dank-ocr --line             强制按单行识别（PSM 7）
-#   dank-ocr -s                 零散界面文字（PSM 11）
-#   dank-ocr -l jpn             指定 Tesseract 语言
+#   dank-ocr                    中英混排取字（默认引擎）
+#   dank-ocr --engine tesseract 强制使用 Tesseract 后端
+#   dank-ocr -e                 纯英文；适合代码、报错和英文文档（仅 Tesseract）
+#   dank-ocr --line             强制按单行识别（仅 Tesseract，PSM 7）
+#   dank-ocr -s                 零散界面文字（仅 Tesseract，PSM 11）
+#   dank-ocr -l jpn             指定 Tesseract 语言（仅 Tesseract）
 #   dank-ocr -i image.png -p    识别已有图片并打印到 stdout
 #   dank-ocr -k                 保留 Tesseract 产生的汉字间空格
-#   dank-ocr -d                 输出模型、置信度、字高和重试信息
+#   dank-ocr -d                 输出引擎、置信度、字高和重试信息
 
 set -uo pipefail
 
-readonly SCRIPT_VERSION="2.0.0"
+readonly SCRIPT_VERSION="3.0.0"
 readonly TOAST_CATEGORY="dank-ocr"
 readonly MODEL_DIR="${DANK_OCR_TESSDATA_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/tessdata-best}"
+readonly RAPIDOCR_SCRIPT_NAME="dank-ocr-rapidocr.py"
 
 # Catppuccin Mocha
 readonly SLURP_BG="#1e1e2e99"
@@ -39,6 +42,11 @@ INPUT_FILE=""
 CAPTURED_IMAGE=""
 TESSDATA_ARGS=()
 CLEANUP_FILES=()
+ENGINE_REQUEST="${DANK_OCR_ENGINE:-auto}" # auto | rapidocr | tesseract
+ENGINE=""                                 # 实际选中的后端
+TESSERACT_OPT_GIVEN=0                     # 用户是否显式传了 Tesseract 专有参数
+RAPIDOCR_SCRIPT=""
+RAPIDOCR_PYTHON=""
 
 cleanup() {
     ((${#CLEANUP_FILES[@]})) && rm -f -- "${CLEANUP_FILES[@]}"
@@ -60,8 +68,14 @@ toast() { # toast <info|warn|error> <消息> [详情]
         dms ipc call toast "${level}With" "$message" "$details" "" "$TOAST_CATEGORY" >/dev/null 2>&1; then
         return 0
     fi
-    command -v notify-send >/dev/null 2>&1 &&
-        notify-send -a "dank-ocr" "$message" "$details"
+    if command -v notify-send >/dev/null 2>&1 &&
+        notify-send -a "dank-ocr" "$message" "$details" 2>/dev/null; then
+        return 0
+    fi
+    # 通知渠道都不可用时退回 stderr，避免错误被静默吞掉
+    printf '%s\n' "$message" >&2
+    [[ -n $details ]] && printf '  %s\n' "$details" >&2
+    return 0
 }
 
 say() { # say <info|warn|error> <消息> [详情]
@@ -102,19 +116,26 @@ usage() {
 parse_args() {
     while (($#)); do
         case $1 in
-            -e | --eng)     LANGS="eng" ;;
+            -e | --eng)     LANGS="eng"; TESSERACT_OPT_GIVEN=1 ;;
             -l | --lang)
                 (($# >= 2)) || die "缺少语言" "-l/--lang 后面要跟语言代码"
                 LANGS=$2
+                TESSERACT_OPT_GIVEN=1
                 shift
                 ;;
-            --block)        PSM=6 ;;
-            --line)         PSM=7 ;;
-            -s | --sparse)  PSM=11 ;;
+            --engine)
+                (($# >= 2)) || die "缺少引擎名" "--engine 后面要跟 auto / rapidocr / tesseract"
+                ENGINE_REQUEST=$2
+                shift
+                ;;
+            --block)        PSM=6; TESSERACT_OPT_GIVEN=1 ;;
+            --line)         PSM=7; TESSERACT_OPT_GIVEN=1 ;;
+            -s | --sparse)  PSM=11; TESSERACT_OPT_GIVEN=1 ;;
             --psm)
                 (($# >= 2)) || die "缺少版面模式" "--psm 后面要跟 0–13"
                 [[ $2 =~ ^([0-9]|1[0-3])$ ]] || die "无效的版面模式：$2" "可用范围是 0–13"
                 PSM=$2
+                TESSERACT_OPT_GIVEN=1
                 shift
                 ;;
             -i | --input)
@@ -255,39 +276,120 @@ clean_text() {
              { if (blank && seen) print ""; blank = 0; seen = 1; print }'
 }
 
-main() {
-    parse_args "$@"
-    need tesseract
-    need awk gawk
-    need grep
-    need perl
-    [[ $MIN_CONFIDENCE =~ ^[0-9]+([.][0-9]+)?$ ]] ||
-        die "DANK_OCR_MIN_CONFIDENCE 不是数字" "$MIN_CONFIDENCE"
+report_field() { # report_field <报告文件> <键名>
+    awk -v key="$2=" '{
+        for (i = 1; i <= NF; i++)
+            if (index($i, key) == 1) { print substr($i, length(key) + 1); exit }
+    }' "$1"
+}
 
+resolve_rapidocr() {
+    local script python tool_dir
+    script="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/$RAPIDOCR_SCRIPT_NAME"
+    [[ -r $script ]] || return 1
+
+    if [[ -n ${DANK_OCR_RAPIDOCR_PYTHON:-} ]]; then
+        python=$DANK_OCR_RAPIDOCR_PYTHON
+    else
+        tool_dir=$(uv tool dir 2>/dev/null) || tool_dir=""
+        tool_dir=${tool_dir:-${XDG_DATA_HOME:-$HOME/.local/share}/uv/tools}
+        python="$tool_dir/rapidocr/bin/python"
+    fi
+    [[ -x $python ]] || return 1
+
+    RAPIDOCR_SCRIPT=$script
+    RAPIDOCR_PYTHON=$python
+    return 0
+}
+
+select_engine() {
+    case $ENGINE_REQUEST in
+        tesseract)
+            ENGINE=tesseract
+            ;;
+        rapidocr)
+            resolve_rapidocr ||
+                die "RapidOCR 后端不可用" "缺解释器或 $RAPIDOCR_SCRIPT_NAME；先跑 uv tool install rapidocr onnxruntime"
+            ENGINE=rapidocr
+            ;;
+        auto | '')
+            if resolve_rapidocr; then
+                ENGINE=rapidocr
+            else
+                ENGINE=tesseract
+                say warn "RapidOCR 不可用，已回退 Tesseract" "装法：uv tool install rapidocr onnxruntime"
+            fi
+            ;;
+        *)
+            die "未知引擎：$ENGINE_REQUEST" "可用：auto / rapidocr / tesseract"
+            ;;
+    esac
+
+    if [[ $ENGINE == tesseract ]]; then
+        need tesseract
+    elif ((TESSERACT_OPT_GIVEN)); then
+        say warn "RapidOCR 后端不支持 Tesseract 专有参数" "-e/--line/-s/--psm/-l 已忽略；需要它们请加 --engine tesseract"
+    fi
+    return 0
+}
+
+ocr_text_rapidocr() { # <图片> <输出前缀>：文本写 <前缀>.text，置信度写 <前缀>.conf；返回 0/1/2
+    local image=$1 work_prefix=$2
+    local raw="${work_prefix}-rapid.txt"
+    local report="${work_prefix}-rapid.report"
+    local err="${work_prefix}-rapid.stderr"
+    local text_file="${work_prefix}.text"
+    local conf_file="${work_prefix}.conf"
+    CLEANUP_FILES+=("$raw" "$report" "$err")
+
+    local code=0
+    "$RAPIDOCR_PYTHON" "$RAPIDOCR_SCRIPT" "$image" \
+        --report-file "$report" >"$raw" 2>"$err" || code=$?
+
+    case $code in
+        0) ;;
+        3) return 1 ;;
+        *)
+            debug "RapidOCR 失败（exit=$code）：$(tr '\n' ' ' <"$err" | tail -c 300)"
+            return 2
+            ;;
+    esac
+
+    debug "engine=rapidocr image=$image $(cat "$report" 2>/dev/null)"
+    if ((CLEAN)); then
+        clean_text <"$raw" >"$text_file"
+    else
+        cp -- "$raw" "$text_file"
+    fi
+    report_field "$report" avg_score >"$conf_file"
+    return 0
+}
+
+ocr_text_tesseract() { # <图片> <输出前缀>：文本写 <前缀>.text，置信度写 <前缀>.conf；返回 0/1/2
+    local image=$1 work_prefix=$2
+    local text_file="${work_prefix}.text"
+    local conf_file="${work_prefix}.conf"
+    local base_prefix="${work_prefix}-base"
+    local retry_image="${work_prefix}-retry.png"
+    local retry_prefix="${work_prefix}-retry"
     local model_source="system"
+
+    # Tesseract 对约 30 px 字高较稳定。低置信度、小字或空结果才进入预处理重试，
+    # 避免旧版“先靠 OCR 测字高，OCR 失败后反而不放大”的循环依赖。
     if configure_models; then
         model_source="tessdata_best"
     elif [[ $LANGS == "chi_sim+eng" ]]; then
         say warn "未启用高精度 OCR 模型" "运行 install-dank-ocr-models 后会自动启用；本次使用系统模型"
     fi
 
-    local image work_prefix base_prefix retry_image retry_prefix
-    capture_image || return 0
-    image=$CAPTURED_IMAGE
-    [[ -n $image ]] || return 0
+    CLEANUP_FILES+=("$retry_image")
+    debug "engine=tesseract model=$model_source langs=$LANGS psm=$PSM image=$image"
 
-    work_prefix=$(make_temp_file dank-ocr-result-XXXXXX) ||
-        die "建立临时输出名失败"
-    base_prefix="${work_prefix}-base"
-    retry_image="${work_prefix}-retry.png"
-    retry_prefix="${work_prefix}-retry"
-    CLEANUP_FILES+=("$work_prefix" "$retry_image")
-
-    debug "version=$SCRIPT_VERSION model=$model_source langs=$LANGS psm=$PSM image=$image"
     if ! ocr_candidate "$image" "$base_prefix"; then
         local error_details=""
         [[ -s ${base_prefix}.stderr ]] && error_details=$(tail -n 4 "${base_prefix}.stderr" | tr '\n' ' ')
-        die "OCR 引擎运行失败" "$error_details"
+        debug "Tesseract 运行失败：$error_details"
+        return 2
     fi
 
     local selected_prefix=$base_prefix selected_conf
@@ -316,16 +418,21 @@ main() {
         fi
     fi
 
-    local text
     if ((CLEAN)); then
-        text=$(clean_text <"${selected_prefix}.txt")
+        clean_text <"${selected_prefix}.txt" >"$text_file"
     else
-        text=$(<"${selected_prefix}.txt")
+        cp -- "${selected_prefix}.txt" "$text_file"
     fi
+    printf '%s\n' "$selected_conf" >"$conf_file"
+    return 0
+}
+
+emit_result() { # <文本> [置信度百分比]
+    local text=$1 confidence=${2:-}
     text=${text%"${text##*[![:space:]]}"}
 
     if [[ -z $text ]]; then
-        say warn "没识别出文字" "可缩小框选范围，或用 --line / --sparse 切换版面模式"
+        say warn "没识别出文字" "可缩小框选范围，或换个引擎试试"
         return 1
     fi
 
@@ -337,10 +444,63 @@ main() {
     need wl-copy wl-clipboard
     printf '%s' "$text" | wl-copy
 
-    local chars preview
+    local chars preview detail
     chars=$(printf '%s' "$text" | wc -m)
     preview=$(printf '%s' "$text" | tr '\n' ' ' | cut -c1-50)
-    say info "已识别 ${chars} 字，进剪贴板了" "置信度 ${selected_conf}% · $preview"
+    if [[ -n $confidence ]]; then
+        detail="置信度 ${confidence}% · $preview"
+    else
+        detail=$preview
+    fi
+    say info "已识别 ${chars} 字，进剪贴板了" "$detail"
+}
+
+main() {
+    parse_args "$@"
+    need awk gawk
+    need grep
+    need perl
+    [[ $MIN_CONFIDENCE =~ ^[0-9]+([.][0-9]+)?$ ]] ||
+        die "DANK_OCR_MIN_CONFIDENCE 不是数字" "$MIN_CONFIDENCE"
+
+    # -p 是脚本/管道用法：通知没人看，错误必须落到 stderr
+    ((COPY == 0)) && export DANK_OCR_UI=cli
+
+    select_engine
+
+    local image
+    capture_image || return 0
+    image=$CAPTURED_IMAGE
+    [[ -n $image ]] || return 0
+
+    local work_prefix
+    work_prefix=$(make_temp_file dank-ocr-result-XXXXXX) ||
+        die "建立临时输出名失败"
+    local text_file="${work_prefix}.text"
+    local conf_file="${work_prefix}.conf"
+    CLEANUP_FILES+=("$work_prefix" "$text_file" "$conf_file")
+
+    local status=0
+    case $ENGINE in
+        rapidocr)  ocr_text_rapidocr "$image" "$work_prefix" || status=$? ;;
+        tesseract) ocr_text_tesseract "$image" "$work_prefix" || status=$? ;;
+    esac
+
+    if ((status == 2)); then
+        die "OCR 引擎运行失败（$ENGINE）" "加 -d 重跑可看细节"
+    fi
+    if ((status == 1)); then
+        say warn "没识别出文字" "可缩小框选范围，或用 --engine tesseract 换另一套引擎"
+        return 1
+    fi
+
+    local confidence_pct="" conf_value
+    conf_value=$(cat "$conf_file" 2>/dev/null)
+    if [[ -n $conf_value ]]; then
+        confidence_pct=$(awk -v v="$conf_value" 'BEGIN { printf "%.0f", v * 100 }' 2>/dev/null)
+    fi
+
+    emit_result "$(<"$text_file")" "$confidence_pct"
 }
 
 main "$@"

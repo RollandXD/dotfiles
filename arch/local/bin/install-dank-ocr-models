@@ -53,6 +53,28 @@ link_config_dir() {
     fi
 }
 
+report_rapidocr() {
+    # dank-ocr 默认后端。模型（PP-OCRv6 det/rec/cls）随 pip 包分发在
+    # site-packages/rapidocr/models/，无需单独下载，也不走 ModelScope/HF。
+    if ! command -v uv >/dev/null 2>&1; then
+        printf '\n提示：未找到 uv，dank-ocr 将回退 Tesseract 后端。\n'
+        return 0
+    fi
+
+    local tool_dir python
+    tool_dir=$(uv tool dir 2>/dev/null) || tool_dir=""
+    tool_dir=${tool_dir:-${XDG_DATA_HOME:-$HOME/.local/share}/uv/tools}
+    python="$tool_dir/rapidocr/bin/python"
+
+    if [[ -x $python ]]; then
+        printf '\nRapidOCR 后端可用：%s\n' "$python"
+    else
+        printf '\n提示：RapidOCR 后端未安装，dank-ocr 将回退 Tesseract 后端。\n'
+        printf '      安装：uv tool install rapidocr onnxruntime\n'
+    fi
+    return 0
+}
+
 main() {
     need curl
     need install
@@ -90,6 +112,8 @@ main() {
 
     printf '\n高精度模型安装完成：%s\n' "$MODEL_DIR"
     printf '上游固定提交：%s\n' "$MODEL_COMMIT"
+
+    report_rapidocr
 }
 
 main "$@"
