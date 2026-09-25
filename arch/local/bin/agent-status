@@ -3,7 +3,7 @@
 
     agent-status hook <agent>                  由 Codex / Claude 的 lifecycle hook 调用，stdin 为事件 JSON
     agent-status set <agent> <session> <state> [--cwd DIR] [--pid PID] [--detail TEXT]
-                                               由 Pi 扩展调用；state 为 running|waiting|done|end
+                                               由 Pi 扩展调用；state 为 idle|running|waiting|done|end
     agent-status list                          输出 JSON 数组（顺带清掉进程已死的条目）
     agent-status focus <agent> <session>       切到该会话所在的 tmux pane 与终端窗口
     agent-status clear                         清空全部状态
@@ -27,7 +27,7 @@ DONE_TTL = 6 * 3600  # 已完成的会话若进程查不到，最多保留这么
 
 # 事件 → 状态。None 表示忽略（不改变现有状态）
 EVENT_STATE = {
-    "SessionStart": "done",
+    "SessionStart": "idle",
     "UserPromptSubmit": "running",
     "PreToolUse": "running",
     "PostToolUse": "running",
@@ -91,15 +91,19 @@ def write_state(agent, session, state, cwd, pid, detail="", task=None):
         return
     old = load(path) or {}
     now = time.time()
+    tmux_pane = os.environ.get("TMUX_PANE") or old.get("tmuxPane", "")
+    terminal_pid = find_ancestor(os.getpid(), TERMINAL_COMMS) or old.get("terminalPid")
     entry = {
         "agent": agent,
         "session": session,
         "state": state,
         "cwd": cwd or old.get("cwd", ""),
         "pid": pid or old.get("pid"),
-        "tmuxPane": os.environ.get("TMUX_PANE") or old.get("tmuxPane", ""),
+        "tmuxPane": tmux_pane,
         "tmuxSocket": (os.environ.get("TMUX", "").split(",")[0]) or old.get("tmuxSocket", ""),
-        "terminalPid": find_ancestor(os.getpid(), TERMINAL_COMMS) or old.get("terminalPid"),
+        "terminalPid": terminal_pid,
+        # 后台任务（claude 后台 job 等）没有终端可跳，面板里标「后台」且不可点
+        "background": bool(os.environ.get("CLAUDE_JOB_DIR")) or not (tmux_pane or terminal_pid),
         "detail": (detail or "")[:160],  # 仅 waiting 时有意义：等什么
         "task": (old.get("task", "") if task is None else task)[:160],  # 最近一次提示词首行
         "since": old.get("since", now) if old.get("state") == state else now,
@@ -136,6 +140,8 @@ def cmd_hook(agent):
     if state is None:
         return
     session = str(payload.get("session_id") or os.getppid())
+    if state == "idle" and (load(state_file(agent, session)) or {}).get("state") in ("running", "waiting"):
+        return  # Claude 在 /clear、resume、compact 时也发 SessionStart，别把进行中的会话打回空闲
     cwd = payload.get("cwd") or os.getcwd()
     pid = find_ancestor(os.getpid(), AGENT_COMMS.get(agent, {agent}))
     write_state(agent, session, state, cwd, pid, detail, task)
@@ -159,7 +165,7 @@ def cmd_list():
                 continue
             entry["project"] = Path(entry.get("cwd") or "~").name or entry.get("cwd", "")
             out.append(entry)
-    order = {"waiting": 0, "running": 1, "done": 2}
+    order = {"waiting": 0, "running": 1, "done": 2, "idle": 3}
     out.sort(key=lambda e: (order.get(e.get("state"), 3), -e.get("updated", 0)))
     print(json.dumps(out, ensure_ascii=False))
 

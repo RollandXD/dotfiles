@@ -103,7 +103,13 @@ PluginComponent {
             root.run(["cancel"]);
     }
 
-    Component.onCompleted: refresh()
+    Component.onCompleted: {
+        setVisibilityOverride(false);
+        refresh();
+    }
+
+    // 平时藏起来，设了计划才在状态栏露出倒计时；入口在控制中心
+    onHasPlanChanged: setVisibilityOverride(hasPlan)
 
     Timer {
         // 有计划时刷得勤一点，保证倒计时跟手；没计划时 30 秒看一眼外部（终端里设的）变更
@@ -159,6 +165,106 @@ PluginComponent {
         }
     }
 
+    // 弹窗与控制中心详情面板共用同一份 UI
+    property Component controlsComponent: Component {
+        Column {
+            id: body
+            width: parent ? parent.width : 360
+            spacing: Theme.spacingM
+
+            // 当前状态
+            StyledRect {
+                width: parent.width
+                height: 72
+                radius: Theme.cornerRadius
+                color: Theme.surfaceContainerHigh
+                border.width: 1
+                border.color: root.hasPlan ? root.stateColor : Theme.outlineMedium
+
+                Row {
+                    anchors.fill: parent
+                    anchors.margins: Theme.spacingM
+                    spacing: Theme.spacingM
+
+                    DankIcon {
+                        name: root.hasPlan ? (root.schedMode === "reboot" ? "restart_alt" : "power_settings_new") : "schedule"
+                        size: Theme.iconSizeLarge
+                        color: root.stateColor
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+
+                    Column {
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: Theme.spacingXXS
+
+                        StyledText {
+                            text: root.hasPlan ? root.clockText(root.schedEpoch) + " " + root.modeText : "没有定时计划"
+                            font.pixelSize: Theme.fontSizeLarge
+                            font.weight: Font.Medium
+                            color: Theme.surfaceText
+                        }
+
+                        StyledText {
+                            text: root.hasPlan ? "还有 " + root.longLeft(root.secondsLeft) : "选一个预设，或在下面输入时间"
+                            font.pixelSize: Theme.fontSizeSmall
+                            color: Theme.surfaceVariantText
+                        }
+                    }
+                }
+            }
+
+            DankButton {
+                visible: root.hasPlan
+                width: parent.width
+                text: "取消" + root.modeText + "计划"
+                iconName: "cancel"
+                backgroundColor: Theme.withAlpha(Theme.error, 0.18)
+                textColor: Theme.error
+                onClicked: root.run(["cancel"])
+            }
+
+            // 预设
+            Flow {
+                width: parent.width
+                spacing: Theme.spacingS
+
+                Repeater {
+                    model: root.presets
+
+                    delegate: DankButton {
+                        required property var modelData
+                        text: modelData.label
+                        iconName: modelData.icon
+                        buttonHeight: 36
+                        enabled: !root.busy
+                        opacity: enabled ? 1 : 0.5
+                        onClicked: root.run(modelData.args)
+                    }
+                }
+            }
+
+            DankTextField {
+                id: customField
+                width: parent.width
+                placeholderText: "自定义：23:30 或 90m / 1h30m，回车确认"
+                leftIconName: "edit_calendar"
+                onAccepted: {
+                    root.runCustom(text);
+                    text = "";
+                }
+            }
+
+            StyledText {
+                visible: root.busy
+                width: parent.width
+                text: "正在提交…"
+                font.pixelSize: Theme.fontSizeSmall
+                color: Theme.surfaceVariantText
+                horizontalAlignment: Text.AlignHCenter
+            }
+        }
+    }
+
     popoutContent: Component {
         PopoutComponent {
             id: popout
@@ -167,106 +273,38 @@ PluginComponent {
             detailsText: "计划由系统 shutdown 保管，重启 DMS 或登出都不影响；关机前 10 分钟和 1 分钟会弹提醒。右键胶囊可直接取消。"
             showCloseButton: true
 
-            Item {
+            Loader {
                 width: parent.width
-                implicitHeight: body.implicitHeight
+                sourceComponent: root.controlsComponent
+            }
+        }
+    }
 
-                Column {
-                    id: body
-                    width: parent.width
-                    spacing: Theme.spacingM
+    // ── 控制中心磁贴 ──────────────────────────────────────────────
+    ccWidgetIcon: hasPlan ? (schedMode === "reboot" ? "restart_alt" : "power_settings_new") : "schedule"
+    ccWidgetPrimaryText: "定时关机"
+    ccWidgetSecondaryText: hasPlan ? clockText(schedEpoch) + " " + modeText + " · 还剩 " + shortLeft(secondsLeft) : "未设定"
+    ccWidgetIsActive: hasPlan
 
-                    // 当前状态
-                    StyledRect {
-                        width: parent.width
-                        height: 72
-                        radius: Theme.cornerRadius
-                        color: Theme.surfaceContainerHigh
-                        border.width: 1
-                        border.color: root.hasPlan ? root.stateColor : Theme.outlineMedium
+    // 点磁贴图标：有计划就取消；设定计划请点文字区展开详情
+    onCcWidgetToggled: {
+        if (hasPlan)
+            run(["cancel"]);
+    }
 
-                        Row {
-                            anchors.fill: parent
-                            anchors.margins: Theme.spacingM
-                            spacing: Theme.spacingM
+    ccDetailContent: Component {
+        Rectangle {
+            implicitHeight: detailLoader.implicitHeight + Theme.spacingM * 2
+            radius: Theme.cornerRadius
+            color: Theme.surfaceContainerHigh
 
-                            DankIcon {
-                                name: root.hasPlan ? (root.schedMode === "reboot" ? "restart_alt" : "power_settings_new") : "schedule"
-                                size: Theme.iconSizeLarge
-                                color: root.stateColor
-                                anchors.verticalCenter: parent.verticalCenter
-                            }
-
-                            Column {
-                                anchors.verticalCenter: parent.verticalCenter
-                                spacing: Theme.spacingXXS
-
-                                StyledText {
-                                    text: root.hasPlan ? root.clockText(root.schedEpoch) + " " + root.modeText : "没有定时计划"
-                                    font.pixelSize: Theme.fontSizeLarge
-                                    font.weight: Font.Medium
-                                    color: Theme.surfaceText
-                                }
-
-                                StyledText {
-                                    text: root.hasPlan ? "还有 " + root.longLeft(root.secondsLeft) : "选一个预设，或在下面输入时间"
-                                    font.pixelSize: Theme.fontSizeSmall
-                                    color: Theme.surfaceVariantText
-                                }
-                            }
-                        }
-                    }
-
-                    DankButton {
-                        visible: root.hasPlan
-                        width: parent.width
-                        text: "取消" + root.modeText + "计划"
-                        iconName: "cancel"
-                        backgroundColor: Theme.withAlpha(Theme.error, 0.18)
-                        textColor: Theme.error
-                        onClicked: root.run(["cancel"])
-                    }
-
-                    // 预设
-                    Flow {
-                        width: parent.width
-                        spacing: Theme.spacingS
-
-                        Repeater {
-                            model: root.presets
-
-                            delegate: DankButton {
-                                required property var modelData
-                                text: modelData.label
-                                iconName: modelData.icon
-                                buttonHeight: 36
-                                enabled: !root.busy
-                                opacity: enabled ? 1 : 0.5
-                                onClicked: root.run(modelData.args)
-                            }
-                        }
-                    }
-
-                    DankTextField {
-                        id: customField
-                        width: parent.width
-                        placeholderText: "自定义：23:30 或 90m / 1h30m，回车确认"
-                        leftIconName: "edit_calendar"
-                        onAccepted: {
-                            root.runCustom(text);
-                            text = "";
-                        }
-                    }
-
-                    StyledText {
-                        visible: root.busy
-                        width: parent.width
-                        text: "正在提交…"
-                        font.pixelSize: Theme.fontSizeSmall
-                        color: Theme.surfaceVariantText
-                        horizontalAlignment: Text.AlignHCenter
-                    }
-                }
+            Loader {
+                id: detailLoader
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.margins: Theme.spacingM
+                sourceComponent: root.controlsComponent
             }
         }
     }

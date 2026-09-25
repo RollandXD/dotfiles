@@ -53,6 +53,11 @@
       "id": "darkMode",
       "enabled": true,
       "width": 50
+    },
+    {
+      "id": "plugin_rollandShutdown",
+      "enabled": true,
+      "width": 50
     }
   ],
   "showWorkspaceApps": true,
@@ -130,6 +135,10 @@
           "enabled": true
         },
         {
+          "id": "chineseCalendar",
+          "enabled": true
+        },
+        {
           "id": "focusedWindow",
           "enabled": true,
           "focusedWindowCompactMode": false
@@ -175,7 +184,7 @@
           "showSwap": false
         },
         {
-          "id": "rollandStorage",
+          "id": "storageMonitor",
           "enabled": true,
           "minimumWidth": true
         },

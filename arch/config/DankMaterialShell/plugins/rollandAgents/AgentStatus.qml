@@ -17,7 +17,7 @@ PluginComponent {
 
     readonly property int waitingCount: sessions.filter(s => s.state === "waiting").length
     readonly property int runningCount: sessions.filter(s => s.state === "running").length
-    readonly property int doneCount: sessions.filter(s => s.state === "done").length
+    readonly property int doneCount: sessions.filter(s => s.state === "done" || s.state === "idle").length
     readonly property color pillColor: waitingCount > 0 ? Theme.warning : (runningCount > 0 ? Theme.primary : Theme.widgetIconColor)
     readonly property string pillText: waitingCount > 0 ? waitingCount + "!" : (runningCount > 0 ? String(runningCount) : "")
 
@@ -34,6 +34,8 @@ PluginComponent {
             return "等你确认";
         if (state === "running")
             return "运行中";
+        if (state === "idle")
+            return "空闲";
         return "已完成";
     }
 
@@ -123,7 +125,7 @@ PluginComponent {
             id: popout
 
             headerText: "AI Agents"
-            detailsText: root.sessions.length === 0 ? "" : root.waitingCount + " 个等你 · " + root.runningCount + " 个运行中 · " + root.doneCount + " 个已完成。点击条目跳到对应终端。"
+            detailsText: root.sessions.length === 0 ? "" : root.waitingCount + " 个等你 · " + root.runningCount + " 个运行中 · " + root.doneCount + " 个空闲/已完成。点击条目跳到对应终端，后台任务无法跳转。"
             showCloseButton: true
 
             Item {
@@ -155,8 +157,9 @@ PluginComponent {
 
                             width: parent.width
                             height: 68
+                            opacity: modelData.background ? 0.6 : 1
                             radius: Theme.cornerRadius
-                            color: rowMouse.containsMouse ? Theme.surfaceContainerHighest : Theme.surfaceContainerHigh
+                            color: rowMouse.containsMouse && !modelData.background ? Theme.surfaceContainerHighest : Theme.surfaceContainerHigh
                             border.width: 1
                             border.color: modelData.state === "waiting" ? Theme.warning : Theme.outlineMedium
 
@@ -174,7 +177,7 @@ PluginComponent {
                                     anchors.verticalCenter: parent.verticalCenter
 
                                     SequentialAnimation on opacity {
-                                        running: row.modelData.state !== "done"
+                                        running: row.modelData.state === "running" || row.modelData.state === "waiting"
                                         loops: Animation.Infinite
                                         NumberAnimation { to: 0.3; duration: 700 }
                                         NumberAnimation { to: 1; duration: 700 }
@@ -195,7 +198,7 @@ PluginComponent {
                                             anchors.left: parent.left
                                             anchors.right: stateLabel.left
                                             anchors.rightMargin: Theme.spacingS
-                                            text: (root.agentNames[row.modelData.agent] || row.modelData.agent) + "  ·  " + (row.modelData.project || "~")
+                                            text: (root.agentNames[row.modelData.agent] || row.modelData.agent) + (row.modelData.background ? "（后台）" : "") + "  ·  " + (row.modelData.project || "~")
                                             font.pixelSize: Theme.fontSizeMedium
                                             font.weight: Font.Medium
                                             color: Theme.surfaceText
@@ -228,6 +231,7 @@ PluginComponent {
                                 id: rowMouse
                                 anchors.fill: parent
                                 hoverEnabled: true
+                                enabled: !row.modelData.background
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
                                     root.focusSession(row.modelData);

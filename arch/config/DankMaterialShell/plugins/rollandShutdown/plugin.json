@@ -5,7 +5,7 @@
   "version": "1.0.0",
   "author": "Rolland",
   "type": "widget",
-  "capabilities": ["dankbar-widget"],
+  "capabilities": ["dankbar-widget", "control-center"],
   "component": "./ShutdownTimer.qml",
   "icon": "schedule",
   "permissions": ["process"]
