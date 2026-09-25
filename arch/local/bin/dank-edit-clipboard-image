@@ -1,0 +1,218 @@
+#!/usr/bin/env bash
+# dank-edit-clipboard-image — 用 Satty 编辑剪贴板图片
+#
+# 优先从剪贴板的 image/* MIME 读取图片；没有图片 MIME 时，仅回退到
+# text/uri-list 中的单个本地图片文件。远程 URI 和多文件输入会被拒绝。
+
+set -uo pipefail
+
+readonly TOAST_CATEGORY="dank-edit-clipboard-image"
+readonly RUNTIME_PREFIX="dank-edit-clipboard-image"
+
+TEMP_DIR=""
+TEMP_FILE=""
+
+cleanup() {
+    if [[ -n $TEMP_FILE ]]; then
+        rm -f -- "$TEMP_FILE" 2>/dev/null || true
+    fi
+    if [[ -n $TEMP_DIR ]]; then
+        rmdir -- "$TEMP_DIR" 2>/dev/null || true
+    fi
+    return 0
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+notify() { # notify <level> <summary> [details]
+    local level=$1 summary=$2 details=${3:-}
+
+    if command -v dms >/dev/null 2>&1 &&
+        dms ipc call toast "${level}With" "$summary" "$details" "" "$TOAST_CATEGORY" >/dev/null 2>&1; then
+        return 0
+    fi
+    if command -v notify-send >/dev/null 2>&1 &&
+        notify-send -a "$TOAST_CATEGORY" "$summary" "$details" >/dev/null 2>&1; then
+        return 0
+    fi
+
+    printf '%s\n' "$summary" >&2
+    [[ -n $details ]] && printf '  %s\n' "$details" >&2
+    return 0
+}
+
+die() {
+    notify error "$1" "${2:-}"
+    exit 1
+}
+
+need() {
+    command -v "$1" >/dev/null 2>&1 ||
+        die "缺少依赖：$1" "请安装：${2:-$1}"
+}
+
+make_temp_storage() {
+    local runtime_dir=${XDG_RUNTIME_DIR:-/tmp}
+
+    if [[ -d $runtime_dir && -w $runtime_dir ]]; then
+        TEMP_DIR=$(mktemp -d --tmpdir="$runtime_dir" "${RUNTIME_PREFIX}.XXXXXX" 2>/dev/null || true)
+    fi
+    if [[ -z $TEMP_DIR ]]; then
+        TEMP_DIR=$(mktemp -d -t "${RUNTIME_PREFIX}.XXXXXX" 2>/dev/null || true)
+    fi
+    [[ -n $TEMP_DIR && -d $TEMP_DIR ]] ||
+        die "无法创建临时目录" "请检查 XDG_RUNTIME_DIR 或 /tmp 的权限"
+
+    chmod 700 -- "$TEMP_DIR" ||
+        die "无法设置临时目录权限" "$TEMP_DIR"
+
+    TEMP_FILE="$TEMP_DIR/image"
+    (umask 077 && : > "$TEMP_FILE") ||
+        die "无法创建临时图片文件" "$TEMP_FILE"
+    chmod 600 -- "$TEMP_FILE" ||
+        die "无法设置临时图片权限" "$TEMP_FILE"
+}
+
+image_mime() {
+    file --brief --mime-type -- "$1" 2>/dev/null
+}
+
+choose_image_mime() {
+    local types_output type selected=""
+
+    types_output=$(wl-paste --list-types 2>/dev/null) ||
+        die "无法读取剪贴板类型" "请确认 Wayland 剪贴板服务正常运行"
+
+    while IFS= read -r type; do
+        [[ -n $type ]] || continue
+        if [[ $type == image/png ]]; then
+            selected=$type
+            break
+        fi
+        [[ -z $selected && $type == image/* ]] && selected=$type
+    done <<< "$types_output"
+
+    printf '%s\n' "$selected"
+}
+
+decode_local_uri() {
+    python3 - "$1" <<'PY'
+import re
+import sys
+from urllib.parse import unquote, urlsplit
+
+raw = sys.argv[1]
+if "\x00" in raw or "\n" in raw or "\r" in raw:
+    raise SystemExit(2)
+
+# A bare absolute path is already a filesystem path: do not percent-decode it.
+if raw.startswith("/"):
+    print(raw)
+    raise SystemExit(0)
+
+if not raw.lower().startswith("file://"):
+    raise SystemExit(2)
+
+try:
+    parsed = urlsplit(raw)
+except ValueError:
+    raise SystemExit(2)
+
+if parsed.scheme.lower() != "file":
+    raise SystemExit(2)
+if parsed.netloc.lower() not in ("", "localhost"):
+    raise SystemExit(2)
+if parsed.query or parsed.fragment or not parsed.path:
+    raise SystemExit(2)
+if re.search(r"%(?![0-9A-Fa-f]{2})", parsed.path):
+    raise SystemExit(2)
+
+path = unquote(parsed.path)
+if "\x00" in path or not path.startswith("/"):
+    raise SystemExit(2)
+print(path)
+PY
+}
+
+copy_uri_image() {
+    local uri_list line source_path source_mime
+    local -a uris=()
+
+    uri_list=$(wl-paste --no-newline --type text/uri-list 2>/dev/null) ||
+        die "剪贴板中没有可读取的图片" "未找到 image/* MIME，也无法读取 text/uri-list"
+
+    while IFS= read -r line || [[ -n $line ]]; do
+        line=${line%$'\r'}
+        [[ -n $line && $line != \#* ]] || continue
+        uris+=("$line")
+    done <<< "$uri_list"
+
+    if ((${#uris[@]} == 0)); then
+        die "剪贴板中没有可读取的图片" "text/uri-list 为空"
+    fi
+    if ((${#uris[@]} > 1)); then
+        die "一次只能编辑一张图片" "请只复制一个图片文件后重试"
+    fi
+
+    source_path=$(decode_local_uri "${uris[0]}" 2>/dev/null) ||
+        die "不支持此图片 URI" "仅支持本地绝对路径或 file:// URI，不读取远程文件"
+
+    [[ -f $source_path && -r $source_path ]] ||
+        die "图片文件不可读" "$source_path"
+
+    source_mime=$(image_mime "$source_path") ||
+        die "无法识别图片类型" "$source_path"
+    [[ $source_mime == image/* ]] ||
+        die "剪贴板文件不是图片" "$source_path ($source_mime)"
+
+    cp -- "$source_path" "$TEMP_FILE" ||
+        die "无法复制剪贴板图片" "$source_path"
+}
+
+prepare_image() {
+    local selected_mime actual_mime
+
+    make_temp_storage
+    selected_mime=$(choose_image_mime)
+
+    if [[ -n $selected_mime ]]; then
+        wl-paste --type "$selected_mime" > "$TEMP_FILE" 2>/dev/null ||
+            die "无法读取剪贴板图片" "$selected_mime"
+    else
+        copy_uri_image
+    fi
+
+    [[ -s $TEMP_FILE ]] ||
+        die "剪贴板图片为空" "未读取到可编辑的图片数据"
+
+    actual_mime=$(image_mime "$TEMP_FILE") ||
+        die "无法识别剪贴板图片" "$TEMP_FILE"
+    [[ $actual_mime == image/* ]] ||
+        die "剪贴板内容不是图片" "$actual_mime"
+}
+
+main() {
+    need wl-paste wl-clipboard
+    need wl-copy wl-clipboard
+    need satty satty
+    need file file
+    need python3 python
+
+    prepare_image
+
+    satty \
+        --filename "$TEMP_FILE" \
+        --copy-command wl-copy \
+        --actions-on-enter save-to-clipboard \
+        --actions-on-escape exit \
+        --early-exit copy
+    local satty_status=$?
+
+    if ((satty_status != 0)); then
+        notify error "Satty 编辑失败" "退出码：$satty_status"
+    fi
+    return "$satty_status"
+}
+
+main "$@"

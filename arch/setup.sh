@@ -72,6 +72,8 @@ ln -sf "$DOTFILES_DIR/arch/config/DankMaterialShell/plugin_settings.json" \
 mkdir -p "$HOME/.local/bin"
 ln -sf "$DOTFILES_DIR/arch/local/bin/dank-ocr" \
        "$HOME/.local/bin/dank-ocr"
+ln -sf "$DOTFILES_DIR/arch/local/bin/dank-edit-clipboard-image" \
+       "$HOME/.local/bin/dank-edit-clipboard-image"
 ln -sf "$DOTFILES_DIR/arch/local/bin/install-dank-ocr-models" \
        "$HOME/.local/bin/install-dank-ocr-models"
 ln -sf "$DOTFILES_DIR/arch/local/bin/dank-shutdown" \
