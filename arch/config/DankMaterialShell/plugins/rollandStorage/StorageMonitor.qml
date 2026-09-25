@@ -8,138 +8,57 @@ import qs.Modules.Plugins
 PluginComponent {
     id: root
 
+    // 数据全部来自 DgopService（DMS 本就在轮询，这里零额外进程）。
+    // /home 与 / 同为一个 btrfs 分区时 dgop 只给出 /，所以只有 /home 独立挂载时才会单列。
+    // 超阈值告警由 disk-space-guard.timer 负责，这里只做展示。
     readonly property var monitoredPaths: ["/", "/home", "/mnt/wingame"]
-    readonly property var placeholderRows: monitoredPaths.map(path => ({
-        "mount": path,
-        "device": "",
-        "size": "--",
-        "used": "--",
-        "avail": "--",
-        "percent": null,
-        "missing": false
-    }))
+    readonly property var optionalPaths: ["/home"] // 不存在时静默省略，而不是显示「未挂载」
 
-    property var diskRows: []
-    property bool loading: false
-    property string lastError: ""
-
-    readonly property var displayRows: diskRows.length > 0 ? diskRows : placeholderRows
-    readonly property var primaryBarMount: {
-        const mounts = DgopService.diskMounts || [];
-        const dgopRoot = mounts.find(mount => mount.mount === "/");
-        return dgopRoot || (diskRows.length > 0 ? diskRows[0] : null);
-    }
-    readonly property real primaryPercent: {
-        if (!primaryBarMount || primaryBarMount.percent === undefined || primaryBarMount.percent === null)
+    function toPercent(value) {
+        if (value === undefined || value === null)
             return -1;
-        return typeof primaryBarMount.percent === "number" ? primaryBarMount.percent : parseFloat(String(primaryBarMount.percent).replace("%", ""));
-    }
-    readonly property color usageColor: {
-        if (primaryPercent > 90)
-            return Theme.tempDanger;
-        if (primaryPercent > 75)
-            return Theme.tempWarning;
-        return Theme.widgetIconColor;
+        const n = typeof value === "number" ? value : parseFloat(String(value).replace("%", ""));
+        return isNaN(n) ? -1 : n;
     }
 
-    function refreshData() {
-        if (loading)
-            return;
+    readonly property var mounts: DgopService.diskMounts || []
+    readonly property var rootMount: mounts.find(m => m.mount === "/") || null
+    readonly property real rootPercent: toPercent(rootMount?.percent)
+    readonly property bool homeSeparate: mounts.some(m => m.mount === "/home")
 
-        loading = true;
-        Proc.runCommand(
-            null,
-            ["df", "-hP", "--"].concat(monitoredPaths),
-            (stdout, exitCode) => {
-                if (exitCode !== 0) {
-                    lastError = "读取磁盘空间失败（df 退出码 " + exitCode + "）";
-                    loading = false;
-                    return;
-                }
+    readonly property var rows: monitoredPaths.map(path => {
+        const m = mounts.find(x => x.mount === path);
+        if (!m)
+            return optionalPaths.indexOf(path) >= 0 ? null : { "mount": path, "missing": true };
+        return {
+            "mount": path,
+            "fstype": m.fstype || "",
+            "size": m.size || "--",
+            "used": m.used || "--",
+            "avail": m.avail || "--",
+            "percent": toPercent(m.percent),
+            "missing": false
+        };
+    }).filter(r => r !== null)
 
-                const parsedRows = [];
-                const lines = String(stdout || "").trim().split(/\r?\n/);
-                for (let index = 1; index < lines.length; index++) {
-                    const line = lines[index].trim();
-                    if (!line)
-                        continue;
-
-                    const fields = line.split(/\s+/);
-                    if (fields.length < 6)
-                        continue;
-
-                    parsedRows.push({
-                        "device": fields.slice(0, fields.length - 5).join(" "),
-                        "size": fields[fields.length - 5],
-                        "used": fields[fields.length - 4],
-                        "avail": fields[fields.length - 3],
-                        "percent": parseFloat(fields[fields.length - 2].replace("%", "")),
-                        "mount": fields[fields.length - 1],
-                        "missing": false
-                    });
-                }
-
-                const dgopMounts = DgopService.diskMounts || [];
-                parsedRows.forEach(row => {
-                    const dgopRow = dgopMounts.find(mount => mount.mount === row.mount)
-                        || (row.mount === "/home" ? dgopMounts.find(mount => mount.mount === "/" && mount.device === row.device) : null);
-                    if (!dgopRow)
-                        return;
-
-                    row.size = dgopRow.size || row.size;
-                    row.used = dgopRow.used || row.used;
-                    row.avail = dgopRow.avail || row.avail;
-                    row.percent = parseFloat(String(dgopRow.percent || row.percent).replace("%", ""));
-                });
-
-                const byMount = {};
-                parsedRows.forEach(row => byMount[row.mount] = row);
-                diskRows = monitoredPaths.map(path => byMount[path] || ({
-                    "mount": path,
-                    "device": "",
-                    "size": "--",
-                    "used": "--",
-                    "avail": "--",
-                    "percent": null,
-                    "missing": true
-                }));
-                lastError = diskRows.some(row => row.missing) ? "部分挂载点暂不可用" : "";
-                loading = false;
-            },
-            100
-        );
+    function mountTitle(row) {
+        if (row.mount === "/")
+            return homeSeparate ? "根分区  /" : "根分区  /（含 /home）";
+        return row.mount;
     }
 
-    function rowPercent(row) {
-        if (!row || row.percent === undefined || row.percent === null || isNaN(row.percent))
-            return -1;
-        return Number(row.percent);
-    }
-
-    function rowColor(row) {
-        const percent = rowPercent(row);
+    function levelColor(percent, normal) {
         if (percent > 90)
             return Theme.error;
         if (percent > 75)
             return Theme.warning;
-        return Theme.primary;
+        return normal;
     }
 
-    Component.onCompleted: {
-        DgopService.addRef(["diskmounts"]);
-        refreshData();
-    }
+    readonly property color pillColor: rootPercent > 90 ? Theme.tempDanger : (rootPercent > 75 ? Theme.tempWarning : Theme.widgetIconColor)
 
-    Component.onDestruction: {
-        DgopService.removeRef(["diskmounts"]);
-    }
-
-    Timer {
-        interval: 30000
-        running: true
-        repeat: true
-        onTriggered: root.refreshData()
-    }
+    Component.onCompleted: DgopService.addRef(["diskmounts"])
+    Component.onDestruction: DgopService.removeRef(["diskmounts"])
 
     horizontalBarPill: Component {
         Row {
@@ -148,18 +67,15 @@ PluginComponent {
             DankIcon {
                 name: "storage"
                 size: Theme.barIconSize(root.barThickness, undefined, root.barConfig?.maximizeWidgetIcons, root.barConfig?.iconScale)
-                color: root.usageColor
+                color: root.pillColor
                 anchors.verticalCenter: parent.verticalCenter
             }
 
             StyledText {
-                text: root.primaryPercent >= 0 ? root.primaryPercent.toFixed(0) + "%" : "--%"
+                text: root.rootPercent >= 0 ? root.rootPercent.toFixed(0) + "%" : "--%"
                 font.pixelSize: Theme.barTextSize(root.barThickness, root.barConfig?.fontScale, root.barConfig?.maximizeWidgetText)
                 color: Theme.widgetTextColor
                 anchors.verticalCenter: parent.verticalCenter
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-                elide: Text.ElideNone
                 wrapMode: Text.NoWrap
             }
         }
@@ -172,18 +88,15 @@ PluginComponent {
             DankIcon {
                 name: "storage"
                 size: Theme.barIconSize(root.barThickness, undefined, root.barConfig?.maximizeWidgetIcons, root.barConfig?.iconScale)
-                color: root.usageColor
+                color: root.pillColor
                 anchors.horizontalCenter: parent.horizontalCenter
             }
 
             StyledText {
-                text: root.primaryPercent >= 0 ? root.primaryPercent.toFixed(0) : "--"
+                text: root.rootPercent >= 0 ? root.rootPercent.toFixed(0) : "--"
                 font.pixelSize: Theme.barTextSize(root.barThickness, root.barConfig?.fontScale, root.barConfig?.maximizeWidgetText)
                 color: Theme.widgetTextColor
                 anchors.horizontalCenter: parent.horizontalCenter
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-                elide: Text.ElideNone
                 wrapMode: Text.NoWrap
             }
         }
@@ -194,7 +107,7 @@ PluginComponent {
             id: diskPopout
 
             headerText: "磁盘空间"
-            detailsText: "实时显示 /、/home 与 /mnt/wingame 三个挂载点。/home 会单独列出，即使它与 / 共用同一文件系统容量。"
+            detailsText: root.rootMount ? "根分区还剩 " + root.rootMount.avail + "。点击条目用文件管理器打开。" : "点击条目用文件管理器打开。"
             showCloseButton: true
 
             Item {
@@ -207,15 +120,17 @@ PluginComponent {
                     spacing: Theme.spacingS
 
                     Repeater {
-                        model: root.displayRows
+                        model: root.rows
 
                         delegate: StyledRect {
+                            id: card
                             required property var modelData
+                            readonly property color accent: modelData.missing ? Theme.surfaceVariantText : root.levelColor(modelData.percent, Theme.primary)
 
                             width: parent.width
                             height: 92
                             radius: Theme.cornerRadius
-                            color: Theme.surfaceContainerHigh
+                            color: cardMouse.containsMouse && !modelData.missing ? Theme.surfaceContainerHighest : Theme.surfaceContainerHigh
                             border.width: 1
                             border.color: Theme.outlineMedium
 
@@ -225,9 +140,9 @@ PluginComponent {
                                 spacing: Theme.spacingM
 
                                 DankIcon {
-                                    name: "storage"
+                                    name: card.modelData.mount === "/" ? "hard_drive" : "storage"
                                     size: Theme.iconSize
-                                    color: root.rowColor(modelData)
+                                    color: card.accent
                                     anchors.verticalCenter: parent.verticalCenter
                                 }
 
@@ -238,14 +153,14 @@ PluginComponent {
 
                                     Item {
                                         width: parent.width
-                                        height: pathText.implicitHeight
+                                        height: titleText.implicitHeight
 
                                         StyledText {
-                                            id: pathText
+                                            id: titleText
                                             anchors.left: parent.left
                                             anchors.right: percentText.left
                                             anchors.rightMargin: Theme.spacingS
-                                            text: modelData.mount === "/" ? "根文件系统  /" : modelData.mount
+                                            text: root.mountTitle(card.modelData)
                                             font.pixelSize: Theme.fontSizeMedium
                                             font.weight: Font.Medium
                                             color: Theme.surfaceText
@@ -256,18 +171,17 @@ PluginComponent {
                                         StyledText {
                                             id: percentText
                                             anchors.right: parent.right
-                                            text: root.rowPercent(modelData) >= 0 ? root.rowPercent(modelData).toFixed(0) + "%" : "--"
+                                            text: card.modelData.missing ? "" : card.modelData.percent.toFixed(0) + "%"
                                             font.pixelSize: Theme.fontSizeMedium
                                             font.weight: Font.Medium
-                                            color: root.rowColor(modelData)
-                                            horizontalAlignment: Text.AlignRight
+                                            color: card.accent
                                             wrapMode: Text.NoWrap
                                         }
                                     }
 
                                     StyledText {
                                         width: parent.width
-                                        text: modelData.missing ? "挂载点不可用" : modelData.used + " 已用  ·  " + modelData.avail + " 可用  ·  " + modelData.size + " 总计"
+                                        text: card.modelData.missing ? "未挂载" : card.modelData.used + " 已用  ·  " + card.modelData.avail + " 可用  ·  " + card.modelData.size + " 总计  ·  " + card.modelData.fstype
                                         font.pixelSize: Theme.fontSizeSmall
                                         color: Theme.surfaceVariantText
                                         elide: Text.ElideRight
@@ -281,24 +195,28 @@ PluginComponent {
                                         color: Theme.withAlpha(Theme.surfaceVariant, 0.45)
 
                                         Rectangle {
-                                            width: parent.width * Math.max(0, Math.min(1, root.rowPercent(modelData) / 100))
+                                            width: parent.width * (card.modelData.missing ? 0 : Math.max(0, Math.min(1, card.modelData.percent / 100)))
                                             height: parent.height
                                             radius: parent.radius
-                                            color: root.rowColor(modelData)
+                                            color: card.accent
                                         }
                                     }
                                 }
                             }
-                        }
-                    }
 
-                    StyledText {
-                        visible: root.loading || root.lastError.length > 0
-                        width: parent.width
-                        text: root.loading ? "正在刷新磁盘数据…" : root.lastError
-                        font.pixelSize: Theme.fontSizeSmall
-                        color: root.lastError.length > 0 ? Theme.error : Theme.surfaceVariantText
-                        horizontalAlignment: Text.AlignHCenter
+                            MouseArea {
+                                id: cardMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                enabled: !card.modelData.missing
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    Quickshell.execDetached(["xdg-open", card.modelData.mount]);
+                                    if (diskPopout.closePopout)
+                                        diskPopout.closePopout();
+                                }
+                            }
+                        }
                     }
                 }
             }

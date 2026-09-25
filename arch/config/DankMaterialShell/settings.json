@@ -135,10 +135,6 @@
           "enabled": true
         },
         {
-          "id": "chineseCalendar",
-          "enabled": true
-        },
-        {
           "id": "focusedWindow",
           "enabled": true,
           "focusedWindowCompactMode": false
@@ -184,7 +180,7 @@
           "showSwap": false
         },
         {
-          "id": "storageMonitor",
+          "id": "rollandStorage",
           "enabled": true,
           "minimumWidth": true
         },
