@@ -1,0 +1,77 @@
+#!/bin/bash
+# freeze-monitor v3: 每秒采样系统状态
+# v2 修正: vmstat 列改为按表头动态定位(不再硬编码列号),si/so/wa 不再错位
+# v3 新增: PSI io full delta(抓亚秒级 IO 停顿),D 状态带 wchan(命名内核等待点)
+# 持久化: 由 systemd user service 托管,开机自启 + 崩溃自重启
+#
+# 用法:
+#   freeze-monitor run-foreground   # 前台循环(systemd 调用,勿手动)
+#   freeze-monitor show             # 看最近 30 条
+#   freeze-monitor last N           # 看最近 N 条
+#   freeze-monitor grep [N]         # 只看有异常的行(swap/IO/D状态/PSI停顿)
+
+LOG_DIR="$HOME/.local/share/freeze-monitor"
+LOG_FILE="$LOG_DIR/samples.log"
+mkdir -p "$LOG_DIR"
+
+# psi_delta: 本 tick 内系统被 IO 完全停滞的微秒数(来自 /proc/pressure/io full total 差值)
+sample() {
+    local psi_delta="${1:-0}"
+    local ts mem swap_used vm gpu cpu_top mem_top d_state
+    ts=$(date '+%m-%d %H:%M:%S')
+    mem=$(awk '/MemAvailable/{print int($2/1024)"M"}' /proc/meminfo)
+    swap_used=$(awk '/SwapTotal/{t=$2} /SwapFree/{f=$2} END{print int((t-f)/1024)"M"}' /proc/meminfo)
+    # vmstat: 第2行为表头,据此定位 si/so/bi/bo/wa 真实列;取最后一行数据(第二次采样=瞬时速率)
+    vm=$(LC_ALL=C vmstat 1 2 | awk '
+        NR==2 { for(i=1;i<=NF;i++) col[$i]=i; next }
+        NR>2  { last=$0 }
+        END {
+            n=split(last,a," ")
+            printf "si=%s so=%s bi=%s bo=%s wa=%s",
+                a[col["si"]], a[col["so"]], a[col["bi"]], a[col["bo"]], a[col["wa"]]
+        }')
+    gpu=$(nvidia-smi --query-gpu=utilization.gpu,memory.used --format=csv,noheader,nounits 2>/dev/null \
+            | awk -F', ' '{printf "gpu=%s%% vram=%sM",$1,$2}')
+    cpu_top=$(ps -eo %cpu,comm --sort=-%cpu --no-headers | head -3 | awk '{printf "%s(%.0f%%) ",$2,$1}')
+    mem_top=$(ps -eo rss,comm --sort=-rss --no-headers | head -3 | awk '{printf "%s(%dM) ",$2,int($1/1024)}')
+    # wchan: 内核等待点(如 btrfs_commit_transaction / folio_wait_bit),帮助命名卡顿来源
+    d_state=$(ps -eo state,wchan:24,comm --no-headers \
+        | awk '$1=="D"{printf "%s[%s] ",$3,$2}')
+    printf "%s avail=%s swap=%s %s %s psi=%s | cpu: %s| mem: %s| D: %s\n" \
+        "$ts" "$mem" "$swap_used" "$vm" "$gpu" \
+        "$psi_delta" "$cpu_top" "$mem_top" "${d_state:-none}"
+}
+
+case "${1:-help}" in
+    run-foreground)
+        # 初始化 PSI 基线,避免首 tick 输出虚高的累计值
+        _prev_psi=$(awk -F'total=' '/^full/{print $2+0}' /proc/pressure/io)
+        while true; do
+            _cur_psi=$(awk -F'total=' '/^full/{print $2+0}' /proc/pressure/io)
+            _psi_delta=$(( _cur_psi - _prev_psi ))
+            _prev_psi=$_cur_psi
+            sample "$_psi_delta" >> "$LOG_FILE" 2>/dev/null
+            sleep 1
+        done
+        ;;
+    show)  tail -30 "$LOG_FILE" 2>/dev/null || echo "无日志" ;;
+    last)  tail -"${2:-60}" "$LOG_FILE" 2>/dev/null || echo "无日志" ;;
+    grep)
+        # 标记真正的异常:
+        #   swap 换入/换出 > 2000
+        #   IO 等待 > 20%
+        #   有进程卡 D 状态(排除 i915_flip 正常翻页)
+        #   PSI io full delta > 50000 微秒(本秒内有 50ms+ 全系统 IO 停顿)
+        tail -"${2:-600}" "$LOG_FILE" 2>/dev/null | awk '{
+            match($0,/si=([0-9]+)/,si); match($0,/so=([0-9]+)/,so)
+            match($0,/wa=([0-9]+)/,wa); match($0,/psi=([0-9]+)/,psi)
+            flag=""
+            if (si[1]+0>2000||so[1]+0>2000) flag=flag" <<<SWAP换页"
+            if (wa[1]+0>20)                 flag=flag" <<<IO等待高"
+            if (psi[1]+0>50000)             flag=flag" <<<PSI-IO停顿"
+            if ($0 ~ /D: [a-z]/ && $0 !~ /D: none/ && $0 !~ /i915_flip\[/) flag=flag" <<<D状态阻塞"
+            if (flag!="") print $0 flag
+        }'
+        ;;
+    *) echo "用法: freeze-monitor {show|last N|grep [N]}  (服务由 systemctl --user 管理)" ;;
+esac

@@ -103,16 +103,6 @@
   "dockIsolateDisplays": true,
   "notificationOverlayEnabled": true,
   "notificationTimeoutCritical": 5000,
-  "notificationRules": [
-    {
-      "enabled": true,
-      "field": "appName",
-      "pattern": "Codex CLI",
-      "matchType": "exact",
-      "action": "default",
-      "urgency": "default"
-    }
-  ],
   "osdPowerProfileEnabled": true,
   "screenPreferences": {
     "wallpaper": [
@@ -181,7 +171,7 @@
           "showSwap": false
         },
         {
-          "id": "storageMonitor",
+          "id": "rollandStorage",
           "enabled": true,
           "minimumWidth": true
         },
