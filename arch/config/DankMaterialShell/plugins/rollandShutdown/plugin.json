@@ -1,0 +1,12 @@
+{
+  "id": "rollandShutdown",
+  "name": "Shutdown Timer",
+  "description": "定时关机 / 重启胶囊：状态栏倒计时，点击设定或取消（后端为 dank-shutdown）",
+  "version": "1.0.0",
+  "author": "Rolland",
+  "type": "widget",
+  "capabilities": ["dankbar-widget"],
+  "component": "./ShutdownTimer.qml",
+  "icon": "schedule",
+  "permissions": ["process"]
+}

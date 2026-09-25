@@ -176,6 +176,10 @@
           "minimumWidth": true
         },
         {
+          "id": "rollandShutdown",
+          "enabled": true
+        },
+        {
           "id": "notificationButton",
           "enabled": true
         },
