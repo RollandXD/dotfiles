@@ -191,8 +191,6 @@ if is_arch; then
         done
     fi
 
-    link_file "$DOTFILES_DIR/arch/local/share/konsole/catppuccin.profile" "$HOME/.local/share/konsole/catppuccin.profile"
-    link_file "$DOTFILES_DIR/arch/local/share/konsole/catppuccin-mocha.colorscheme" "$HOME/.local/share/konsole/catppuccin-mocha.colorscheme"
     link_file "$DOTFILES_DIR/arch/local/share/fcitx5/rime/default.custom.yaml" "$HOME/.local/share/fcitx5/rime/default.custom.yaml"
 fi
 

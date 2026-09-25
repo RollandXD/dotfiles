@@ -5,7 +5,7 @@ Personal dotfiles supporting two environments:
 | Environment | Install script |
 |---|---|
 | WSL2 / Ubuntu | `bash setup.sh` |
-| Arch Linux (KDE6) | `bash arch/setup.sh` |
+| Arch Linux (niri + DMS) | `bash arch/setup.sh` |
 
 ---
 
@@ -48,7 +48,7 @@ dotfiles/
 
 ---
 
-## Arch Linux (KDE6) 安装
+## Arch Linux (niri + DMS) 安装
 
 ### 前置条件
 
