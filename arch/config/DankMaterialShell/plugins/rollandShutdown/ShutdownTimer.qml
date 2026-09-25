@@ -1,5 +1,6 @@
 import Quickshell
 import QtQuick
+import Quickshell.Io
 import qs.Common
 import qs.Services
 import qs.Widgets
@@ -66,7 +67,8 @@ PluginComponent {
     }
 
     function refresh() {
-        Proc.runCommand("rollandShutdown.read", ["busctl", "get-property", "org.freedesktop.login1", "/org/freedesktop/login1", "org.freedesktop.login1.Manager", "ScheduledShutdown"], (stdout, exitCode) => {
+        // id 传 null：Proc 按 id 全局防抖，固定 id 会让多个实例（各屏幕状态栏、控制中心）互相顶掉回调
+        Proc.runCommand(null, ["busctl", "get-property", "org.freedesktop.login1", "/org/freedesktop/login1", "org.freedesktop.login1.Manager", "ScheduledShutdown"], (stdout, exitCode) => {
             root.nowEpoch = Date.now() / 1000;
             // 形如 (st) "poweroff" 1785000000000000；无计划时 (st) "" 18446744073709551615
             const m = String(stdout || "").match(/"([a-z-]*)"\s+(\d+)/);
@@ -111,9 +113,30 @@ PluginComponent {
     // 平时藏起来，设了计划才在状态栏露出倒计时；入口在控制中心
     onHasPlanChanged: setVisibilityOverride(hasPlan)
 
+    // DMS 会为状态栏、控制中心磁贴、详情面板各建一个实例，彼此状态不共享。
+    // logind 的 ScheduledShutdown 属性带 emits-change，监听它让所有实例（含终端里设的计划）即时同步。
+    Process {
+        id: logindWatch
+        command: ["gdbus", "monitor", "--system", "--dest", "org.freedesktop.login1", "--object-path", "/org/freedesktop/login1"]
+        running: true
+        stdout: SplitParser {
+            onRead: line => {
+                if (line.indexOf("ScheduledShutdown") >= 0)
+                    root.refresh();
+            }
+        }
+        onExited: watchRestart.restart()
+    }
+
     Timer {
-        // 有计划时刷得勤一点，保证倒计时跟手；没计划时 30 秒看一眼外部（终端里设的）变更
-        interval: root.hasPlan ? 5000 : 30000
+        id: watchRestart
+        interval: 5000
+        onTriggered: logindWatch.running = true
+    }
+
+    Timer {
+        // 倒计时文字每 15 秒走一次；状态本身靠上面的信号，这里顺带兜底重读
+        interval: root.hasPlan ? 15000 : 60000
         running: true
         repeat: true
         onTriggered: root.refresh()

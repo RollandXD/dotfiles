@@ -49,7 +49,8 @@ PluginComponent {
     }
 
     function refresh() {
-        Proc.runCommand("rollandAgents.list", [backend, "list"], (stdout, exitCode) => {
+        // id 传 null：Proc 按 id 全局防抖，固定 id 会让多个实例（各屏幕状态栏、控制中心）互相顶掉回调
+        Proc.runCommand(null, [backend, "list"], (stdout, exitCode) => {
             root.nowEpoch = Date.now() / 1000;
             if (exitCode !== 0)
                 return;
