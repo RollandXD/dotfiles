@@ -1,0 +1,233 @@
+#!/usr/bin/env python3
+"""agent-status — 汇总 Codex / Claude Code / Pi 各会话的状态，供 DMS 插件 rollandAgents 展示。
+
+    agent-status hook <agent>                  由 Codex / Claude 的 lifecycle hook 调用，stdin 为事件 JSON
+    agent-status set <agent> <session> <state> [--cwd DIR] [--pid PID] [--detail TEXT]
+                                               由 Pi 扩展调用；state 为 running|waiting|done|end
+    agent-status list                          输出 JSON 数组（顺带清掉进程已死的条目）
+    agent-status focus <agent> <session>       切到该会话所在的 tmux pane 与终端窗口
+    agent-status clear                         清空全部状态
+
+状态文件：$XDG_STATE_HOME/agent-status/<agent>-<session>.json
+hook 模式永远静默、永远 exit 0：绝不能因为状态栏的事拖累 agent 本身。
+"""
+
+import json
+import os
+import re
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+STATE_DIR = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "agent-status"
+AGENT_COMMS = {"codex": {"codex"}, "claude": {"claude"}, "pi": {"pi", "node", "bun"}}
+TERMINAL_COMMS = {"kitty", "alacritty", "foot", "footclient", "wezterm-gui", "ghostty", "konsole"}
+DONE_TTL = 6 * 3600  # 已完成的会话若进程查不到，最多保留这么久
+
+# 事件 → 状态。None 表示忽略（不改变现有状态）
+EVENT_STATE = {
+    "SessionStart": "done",
+    "UserPromptSubmit": "running",
+    "PreToolUse": "running",
+    "PostToolUse": "running",
+    "PermissionRequest": "waiting",
+    "Stop": "done",
+    "SessionEnd": "end",
+}
+
+
+def proc_stat(pid):
+    """返回 (comm, ppid)；comm 可能含空格和括号，按最后一个 ')' 切分。"""
+    try:
+        raw = Path(f"/proc/{pid}/stat").read_text()
+    except OSError:
+        return None, None
+    head, _, tail = raw.rpartition(")")
+    comm = head.split("(", 1)[1]
+    return comm, int(tail.split()[1])
+
+
+def ancestors(pid):
+    seen = 0
+    while pid and pid > 1 and seen < 32:
+        comm, ppid = proc_stat(pid)
+        if comm is None:
+            return
+        yield pid, comm
+        pid, seen = ppid, seen + 1
+
+
+def find_ancestor(start, names):
+    for pid, comm in ancestors(start):
+        if comm in names:
+            return pid
+    return None
+
+
+def alive(pid):
+    return bool(pid) and Path(f"/proc/{pid}").exists()
+
+
+def safe_name(s):
+    return re.sub(r"[^A-Za-z0-9._-]", "_", s)[:120] or "unknown"
+
+
+def state_file(agent, session):
+    return STATE_DIR / f"{safe_name(agent)}-{safe_name(session)}.json"
+
+
+def load(path):
+    try:
+        return json.loads(path.read_text())
+    except (OSError, ValueError):
+        return None
+
+
+def write_state(agent, session, state, cwd, pid, detail="", task=None):
+    path = state_file(agent, session)
+    if state == "end":
+        path.unlink(missing_ok=True)
+        return
+    old = load(path) or {}
+    now = time.time()
+    entry = {
+        "agent": agent,
+        "session": session,
+        "state": state,
+        "cwd": cwd or old.get("cwd", ""),
+        "pid": pid or old.get("pid"),
+        "tmuxPane": os.environ.get("TMUX_PANE") or old.get("tmuxPane", ""),
+        "tmuxSocket": (os.environ.get("TMUX", "").split(",")[0]) or old.get("tmuxSocket", ""),
+        "terminalPid": find_ancestor(os.getpid(), TERMINAL_COMMS) or old.get("terminalPid"),
+        "detail": (detail or "")[:160],  # 仅 waiting 时有意义：等什么
+        "task": (old.get("task", "") if task is None else task)[:160],  # 最近一次提示词首行
+        "since": old.get("since", now) if old.get("state") == state else now,
+        "updated": now,
+    }
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(entry, ensure_ascii=False))
+    tmp.replace(path)
+
+
+def cmd_hook(agent):
+    try:
+        payload = json.loads(sys.stdin.read() or "{}", strict=False)
+    except ValueError:
+        payload = {}
+    event = payload.get("hook_event_name", "")
+    state = EVENT_STATE.get(event)
+    detail = ""
+    task = None  # None = 沿用上次的任务摘要
+
+    if event == "Notification":
+        # Claude：permission_prompt 才算等你；idle_prompt 只是空闲提醒
+        kind = payload.get("notification_type", "")
+        msg = payload.get("message", "")
+        if kind == "permission_prompt" or (not kind and "permission" in msg.lower()):
+            state, detail = "waiting", msg
+    elif event == "PermissionRequest":
+        detail = "等待批准：" + (payload.get("tool_name") or "操作")
+    elif event == "UserPromptSubmit":
+        prompt = (payload.get("prompt") or "").strip()
+        task = prompt.splitlines()[0] if prompt else ""
+
+    if state is None:
+        return
+    session = str(payload.get("session_id") or os.getppid())
+    cwd = payload.get("cwd") or os.getcwd()
+    pid = find_ancestor(os.getpid(), AGENT_COMMS.get(agent, {agent}))
+    write_state(agent, session, state, cwd, pid, detail, task)
+
+
+def cmd_list():
+    now = time.time()
+    out = []
+    if STATE_DIR.is_dir():
+        for path in STATE_DIR.glob("*.json"):
+            entry = load(path)
+            if not entry:
+                path.unlink(missing_ok=True)
+                continue
+            pid = entry.get("pid")
+            if pid and not alive(pid):
+                path.unlink(missing_ok=True)
+                continue
+            if not pid and now - entry.get("updated", 0) > DONE_TTL:
+                path.unlink(missing_ok=True)
+                continue
+            entry["project"] = Path(entry.get("cwd") or "~").name or entry.get("cwd", "")
+            out.append(entry)
+    order = {"waiting": 0, "running": 1, "done": 2}
+    out.sort(key=lambda e: (order.get(e.get("state"), 3), -e.get("updated", 0)))
+    print(json.dumps(out, ensure_ascii=False))
+
+
+def run(cmd):
+    return subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+
+
+def cmd_focus(agent, session):
+    entry = load(state_file(agent, session))
+    if not entry:
+        return 1
+    term_pid = entry.get("terminalPid")
+    pane = entry.get("tmuxPane")
+    if pane:
+        sock = ["-S", entry["tmuxSocket"]] if entry.get("tmuxSocket") else []
+        run(["tmux", *sock, "select-window", "-t", pane])
+        run(["tmux", *sock, "select-pane", "-t", pane])
+        # 让最近活跃的 client 切到该会话，并据此找到外层终端
+        clients = run(["tmux", *sock, "list-clients", "-F", "#{client_activity} #{client_pid} #{client_name}"]).stdout.split()
+        rows = sorted((clients[i:i + 3] for i in range(0, len(clients), 3)), reverse=True)
+        if rows:
+            run(["tmux", *sock, "switch-client", "-c", rows[0][2], "-t", pane])
+            term_pid = find_ancestor(int(rows[0][1]), TERMINAL_COMMS) or term_pid
+    if term_pid:
+        try:
+            windows = json.loads(run(["niri", "msg", "--json", "windows"]).stdout or "[]")
+        except ValueError:
+            windows = []
+        for w in windows:
+            if w.get("pid") == term_pid:
+                run(["niri", "msg", "action", "focus-window", "--id", str(w["id"])])
+                return 0
+    return 0
+
+
+def main(argv):
+    if len(argv) < 2:
+        print(__doc__.strip())
+        return 0
+    cmd = argv[1]
+    if cmd == "hook" and len(argv) >= 3:
+        try:
+            cmd_hook(argv[2])
+        except Exception:  # noqa: BLE001 — hook 绝不能失败
+            pass
+        return 0
+    if cmd == "set" and len(argv) >= 5:
+        opts = {"--cwd": "", "--pid": "", "--detail": ""}
+        rest = argv[5:]
+        for i in range(0, len(rest) - 1, 2):
+            if rest[i] in opts:
+                opts[rest[i]] = rest[i + 1]
+        pid = int(opts["--pid"]) if opts["--pid"].isdigit() else None
+        write_state(argv[2], argv[3], argv[4], opts["--cwd"], pid, opts["--detail"])
+        return 0
+    if cmd == "list":
+        cmd_list()
+        return 0
+    if cmd == "focus" and len(argv) >= 4:
+        return cmd_focus(argv[2], argv[3])
+    if cmd == "clear":
+        for p in STATE_DIR.glob("*.json"):
+            p.unlink(missing_ok=True)
+        return 0
+    print(__doc__.strip(), file=sys.stderr)
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

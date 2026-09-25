@@ -1,0 +1,12 @@
+{
+  "id": "rollandAgents",
+  "name": "Agent Status",
+  "description": "Codex / Claude Code / Pi 会话状态汇总：运行中、等你确认、已完成，点击跳到对应 tmux pane（后端为 agent-status）",
+  "version": "1.0.0",
+  "author": "Rolland",
+  "type": "widget",
+  "capabilities": ["dankbar-widget"],
+  "component": "./AgentStatus.qml",
+  "icon": "smart_toy",
+  "permissions": ["process"]
+}

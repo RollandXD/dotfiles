@@ -153,6 +153,10 @@
       ],
       "rightWidgets": [
         {
+          "id": "rollandAgents",
+          "enabled": true
+        },
+        {
           "id": "aiUsage",
           "enabled": true
         },
