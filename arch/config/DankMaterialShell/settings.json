@@ -7,7 +7,10 @@
   "cornerRadius": 12,
   "mouseAccelProfile": "flat",
   "clockFormat": "24h",
+  "animationSpeed": 4,
   "customAnimationDuration": 200,
+  "animationVariant": 2,
+  "motionEffect": 1,
   "barElevationEnabled": false,
   "wallpaperFillMode": "Fit",
   "blurredWallpaperLayer": true,
@@ -22,7 +25,7 @@
       "id": "brightnessSlider",
       "enabled": true,
       "width": 50,
-      "deviceName": "backlight:nvidia_0"
+      "deviceName": "ddc:i2c-10"
     },
     {
       "id": "wifi",
@@ -45,22 +48,22 @@
       "width": 50
     },
     {
-      "id": "nightMode",
-      "enabled": true,
-      "width": 50
-    },
-    {
-      "id": "darkMode",
-      "enabled": true,
-      "width": 50
-    },
-    {
       "id": "plugin_rollandShutdown",
       "enabled": true,
       "width": 50
     },
     {
       "id": "battery",
+      "enabled": true,
+      "width": 50
+    },
+    {
+      "id": "nightMode",
+      "enabled": true,
+      "width": 50
+    },
+    {
+      "id": "darkMode",
       "enabled": true,
       "width": 50
     }
@@ -113,6 +116,7 @@
   "dockIsolateDisplays": true,
   "notificationOverlayEnabled": true,
   "notificationTimeoutCritical": 5000,
+  "notificationFocusedMonitor": true,
   "osdPowerProfileEnabled": true,
   "screenPreferences": {
     "wallpaper": [
@@ -263,7 +267,7 @@
       "islandPalette": "default",
       "islandHighContrast": false,
       "islandMediaClockVisible": true,
-      "islandSatelliteBackground": true,
+      "islandSatelliteBackground": false,
       "islandSatelliteGothCorners": false,
       "islandSatelliteTransparency": 0.55,
       "islandSatellitePosition": "edges",
@@ -308,7 +312,7 @@
       "islandTransparency": 0.75,
       "islandCornerRadius": 34,
       "islandBatteryStyle": "solid",
-      "islandNotificationBadgeClearOnOpen": true,
+      "islandNotificationBadgeClearOnOpen": false,
       "islandSpringDamping": 37
     }
   ],
