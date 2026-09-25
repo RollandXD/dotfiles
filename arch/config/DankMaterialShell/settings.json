@@ -58,6 +58,11 @@
       "id": "plugin_rollandShutdown",
       "enabled": true,
       "width": 50
+    },
+    {
+      "id": "battery",
+      "enabled": true,
+      "width": 50
     }
   ],
   "showWorkspaceApps": true,
@@ -193,7 +198,7 @@
           "enabled": true
         },
         {
-          "id": "battery",
+          "id": "rollandBattery",
           "enabled": true
         },
         {

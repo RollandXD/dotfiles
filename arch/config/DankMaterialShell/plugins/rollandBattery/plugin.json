@@ -1,0 +1,11 @@
+{
+  "id": "rollandBattery",
+  "name": "Battery (Auto Hide)",
+  "description": "仅在使用电池供电时显示的电量胶囊；插上电源自动收起（电量改到控制中心看），点击打开原生电池弹窗",
+  "version": "1.0.0",
+  "author": "Rolland",
+  "type": "widget",
+  "capabilities": ["dankbar-widget"],
+  "component": "./BatteryAutoHide.qml",
+  "icon": "battery_std"
+}
