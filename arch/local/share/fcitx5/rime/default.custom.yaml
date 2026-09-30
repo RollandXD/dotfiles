@@ -13,5 +13,11 @@ patch:
     - schema: double_pinyin_flypy
     - schema: bopomofo
   "menu/page_size": 6
-  key_binder/bindings/@next:
-    { when: composing, accept: "Control+space", send: Escape }
+  key_binder/bindings/+:
+    - { when: composing, accept: "Control+space", send: Escape }
+    # 有候选时 ; 选第二个、' 选第三个（代价：打字途中 ' 不再用作拼音分隔符）
+    - { when: has_menu, accept: semicolon, send: 2 }
+    - { when: has_menu, accept: apostrophe, send: 3 }
+  # 以词定字：候选词状态下 [ 上屏首字、] 上屏末字（雾凇 select_character.lua）
+  key_binder/select_first_character: "bracketleft"
+  key_binder/select_last_character: "bracketright"
