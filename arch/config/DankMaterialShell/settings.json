@@ -25,7 +25,7 @@
       "id": "brightnessSlider",
       "enabled": true,
       "width": 50,
-      "deviceName": "ddc:i2c-10"
+      "deviceName": "ddc:i2c-14"
     },
     {
       "id": "wifi",
@@ -166,10 +166,6 @@
         }
       ],
       "rightWidgets": [
-        {
-          "id": "rollandAgents",
-          "enabled": true
-        },
         {
           "id": "aiUsage",
           "enabled": true
