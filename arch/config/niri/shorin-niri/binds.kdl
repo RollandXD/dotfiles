@@ -12,6 +12,10 @@ binds {
     Mod+F1 hotkey-overlay-title="开关输入法 Toggle fcitx" {spawn-sh "fcitx5-remote --check && fcitx5-remote -t || fcitx5 -d";}
     // disabled by Codex 2026-06-29: voxtype off
     // Ctrl+Control_R hotkey-overlay-title="语音输入 Voice Input" {spawn "bash" "-c" "~/.local/bin/voxtype-toggle.sh";}
+    // 2026-09-27 重新启用 voxtype（按一下开始/再按一下结束），改用 Super+Space 系列
+    Mod+Space hotkey-overlay-title="语音输入(润色) Voice" {spawn "bash" "-c" "~/.local/bin/voxtype-toggle.sh";}
+    Mod+Shift+Space hotkey-overlay-title="语音输入(原样) Voice raw" {spawn "bash" "-c" "~/.local/bin/voxtype-toggle.sh --profile raw";}
+    Mod+Alt+Space hotkey-overlay-title="取消语音输入 Voice cancel" {spawn "voxtype" "record" "cancel";}
     Mod+F5 hotkey-overlay-title="快速存档 Quick save" {spawn "quicksave";}
     Mod+F8 hotkey-overlay-title="快速读档 Quick load" {spawn "quickload";}
 
