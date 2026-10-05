@@ -39,6 +39,8 @@ dotfiles/
 │   └── config/
 │       ├── niri/         # 滚动平铺 Wayland 合成器（含 dms/、shorin-niri/ 子配置）
 │       ├── kitty/        # 终端（Catppuccin Frappe）
+│       ├── zsh/          # zsh 语法高亮 Catppuccin Frappe 主题
+│       ├── lsd/          # lsd 配色（Catppuccin Frappe）
 │       └── DankMaterialShell/
 │           ├── settings.json   # DMS 用户设置
 │           └── firefox.css     # DMS Firefox 样式注入

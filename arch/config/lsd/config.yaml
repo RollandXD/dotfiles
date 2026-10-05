@@ -1,0 +1,4 @@
+# lsd 配置：文件名颜色走 LS_COLORS（vivid 生成），其余列（日期/大小/权限等）用同目录 colors.yaml
+# colors.yaml 来自 catppuccin/lsd 的 catppuccin-frappe
+color:
+  theme: custom

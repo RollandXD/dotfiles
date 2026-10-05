@@ -79,6 +79,12 @@ ZSH_THEME="powerlevel10k/powerlevel10k"
 # Add wisely, as too many plugins slow down shell startup.
 plugins=(git fzf-tab zsh-autosuggestions zsh-syntax-highlighting z sudo command-not-found)
 
+# Catppuccin Frappé：语法高亮配色须在 zsh-syntax-highlighting 加载前设置
+[[ -r ~/.config/zsh/catppuccin_frappe-zsh-syntax-highlighting.zsh ]] && \
+  source ~/.config/zsh/catppuccin_frappe-zsh-syntax-highlighting.zsh
+# LS_COLORS 用 vivid 生成；oh-my-zsh 见到已设置就不再用 dircolors 覆盖
+command -v vivid >/dev/null && export LS_COLORS="$(vivid generate catppuccin-frappe)"
+
 source $ZSH/oh-my-zsh.sh
 
 # User configuration

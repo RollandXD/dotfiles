@@ -52,6 +52,8 @@ ln -sf "$DOTFILES_DIR/config/nvim"      "$HOME/.config/nvim"
 # 用 -sfn：当目标已是链接目录时，替换链接本身而非穿透写入
 ln -sfn "$DOTFILES_DIR/arch/config/niri"   "$HOME/.config/niri"
 ln -sfn "$DOTFILES_DIR/arch/config/kitty"  "$HOME/.config/kitty"
+ln -sfn "$DOTFILES_DIR/arch/config/zsh"    "$HOME/.config/zsh"   # Catppuccin zsh 语法高亮配色
+ln -sfn "$DOTFILES_DIR/arch/config/lsd"    "$HOME/.config/lsd"   # lsd Catppuccin 配色
 
 # DMS：保留原目录（DMS 启动时会写 .firstlaunch 等运行时标记），只链具体配置文件
 mkdir -p "$HOME/.config/DankMaterialShell"

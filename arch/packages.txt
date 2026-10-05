@@ -29,3 +29,4 @@ tesseract-data-chi_sim
 tesseract-data-eng
 ttf-jetbrains-mono-nerd
 wl-clipboard
+vivid
