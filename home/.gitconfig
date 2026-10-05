@@ -10,19 +10,19 @@
     light = false
     line-numbers = true
     side-by-side = true
-    syntax-theme = Catppuccin Mocha
-    minus-style = syntax "#53394d"
-    minus-emph-style = syntax "#78425f"
-    plus-style = syntax "#404f4a"
-    plus-emph-style = syntax "#4f6b58"
-    map-styles = bold purple => syntax "#494060", bold cyan => syntax "#405060"
-    line-numbers-minus-style = "#f38ba8"
-    line-numbers-plus-style = "#a6e3a1"
-    line-numbers-zero-style = "#6c7086"
+    syntax-theme = Catppuccin Frappe
+    minus-style = syntax "#5e4856"
+    minus-emph-style = syntax "#79535f"
+    plus-style = syntax "#4e5b57"
+    plus-emph-style = syntax "#5c6e5f"
+    map-styles = bold purple => syntax "#564e6e", bold cyan => syntax "#4c5e6e"
+    line-numbers-minus-style = "#e78284"
+    line-numbers-plus-style = "#a6d189"
+    line-numbers-zero-style = "#737994"
     hunk-header-decoration-style = box ul
     hunk-header-style = file line-number syntax bold
-    file-style = "#cdd6f4" bold
-    file-decoration-style = "#89b4fa" ul ol
+    file-style = "#c6d0f5" bold
+    file-decoration-style = "#8caaee" ul ol
 
 [merge]
     conflictstyle = diff3

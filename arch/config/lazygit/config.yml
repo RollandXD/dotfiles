@@ -13,18 +13,18 @@ gui:
   showIcons: true
   nerdFontsVersion: "3"
   theme:
-    activeBorderColor: ["#89b4fa", bold]
-    inactiveBorderColor: ["#a6adc8"]
-    searchingActiveBorderColor: ["#f9e2af"]
-    optionsTextColor: ["#89b4fa"]
-    selectedLineBgColor: ["#313244"]
-    inactiveViewSelectedLineBgColor: ["#6c7086"]
-    cherryPickedCommitFgColor: ["#89b4fa"]
-    cherryPickedCommitBgColor: ["#45475a"]
-    markedBaseCommitFgColor: ["#89b4fa"]
-    markedBaseCommitBgColor: ["#f9e2af"]
-    unstagedChangesColor: ["#f38ba8"]
-    defaultFgColor: ["#cdd6f4"]
+    activeBorderColor: ["#8caaee", bold]
+    inactiveBorderColor: ["#a5adce"]
+    searchingActiveBorderColor: ["#e5c890"]
+    optionsTextColor: ["#8caaee"]
+    selectedLineBgColor: ["#414559"]
+    inactiveViewSelectedLineBgColor: ["#737994"]
+    cherryPickedCommitFgColor: ["#8caaee"]
+    cherryPickedCommitBgColor: ["#51576d"]
+    markedBaseCommitFgColor: ["#8caaee"]
+    markedBaseCommitBgColor: ["#e5c890"]
+    unstagedChangesColor: ["#e78284"]
+    defaultFgColor: ["#c6d0f5"]
 
 # Lazygit 没有插件管理器；这里用内置 customCommands 调用已安装的 gh CLI。
 # 在分支面板按 X 打开菜单；? 会显示完整说明。

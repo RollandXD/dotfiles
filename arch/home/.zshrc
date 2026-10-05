@@ -135,17 +135,17 @@ eval "$(zoxide init zsh)"
 
 # bat (installed as 'bat' via pacman on Arch)
 alias cat='bat'
-export BAT_THEME="Catppuccin Mocha"   # 与 kitty 配色统一（bat 已内置该主题）
+export BAT_THEME="Catppuccin Frappe"   # 与 kitty 配色统一（bat 已内置该主题）
 
 # fzf (installed via pacman) — 集成脚本由 fzf 二进制生成，随版本自动同步
 eval "$(fzf --zsh)"
 
 # fzf 外观（全局，不放 preview，避免污染 Ctrl-R / Alt-C）
 export FZF_DEFAULT_OPTS="--tmux center --height 40% --layout=reverse --border \
-  --color=spinner:#f5e0dc,hl:#f38ba8 \
-  --color=fg:#cdd6f4,header:#f38ba8,info:#cba6f7,pointer:#f5e0dc \
-  --color=marker:#b4befe,fg+:#cdd6f4,prompt:#cba6f7,hl+:#f38ba8 \
-  --color=border:#6c7086,label:#cdd6f4"
+  --color=spinner:#f2d5cf,hl:#e78284 \
+  --color=fg:#c6d0f5,header:#e78284,info:#ca9ee6,pointer:#f2d5cf \
+  --color=marker:#babbf1,fg+:#c6d0f5,prompt:#ca9ee6,hl+:#e78284 \
+  --color=border:#737994,label:#c6d0f5"
 
 # fzf 全局搜索（从 $HOME 开始，不限于当前目录）
 # Ctrl+T 搜索文件，Alt+C 搜索目录
