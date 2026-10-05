@@ -41,7 +41,7 @@ ln -sf "$DOTFILES_DIR/arch/home/.zshrc"  "$HOME/.zshrc"
 # 共用文件（直接引用仓库根目录下的版本）
 ln -sf "$DOTFILES_DIR/home/.p10k.zsh"   "$HOME/.p10k.zsh"
 ln -sf "$DOTFILES_DIR/home/.gitconfig"  "$HOME/.gitconfig"
-ln -sf "$DOTFILES_DIR/home/.tmux.conf"  "$HOME/.tmux.conf"
+ln -sf "$DOTFILES_DIR/arch/home/.tmux.conf"  "$HOME/.tmux.conf"   # Arch 版（含 Wayland/niri 通知设置）
 ln -sf "$DOTFILES_DIR/home/.vimrc"      "$HOME/.vimrc"
 
 # Neovim 配置

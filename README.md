@@ -18,7 +18,7 @@ dotfiles/
 │   ├── .zshrc
 │   ├── .p10k.zsh         # Powerlevel10k（也被 Arch 共用）
 │   ├── .gitconfig        # Git + delta Catppuccin 配色（也被 Arch 共用）
-│   ├── .tmux.conf        # Tmux（也被 Arch 共用）
+│   ├── .tmux.conf        # Tmux（WSL 版；Arch 用 arch/home/.tmux.conf）
 │   └── .vimrc            # Vim（也被 Arch 共用）
 ├── config/
 │   └── nvim/             # Neovim 配置（跨平台共用）
@@ -30,7 +30,8 @@ dotfiles/
 │   ├── packages.txt      # pacman 包列表
 │   ├── packages-aur.txt  # AUR 包列表
 │   ├── home/
-│   │   └── .zshrc        # Arch 版 zshrc
+│   │   ├── .zshrc        # Arch 版 zshrc
+│   │   └── .tmux.conf    # Arch 版 tmux（Catppuccin Frappe，含 Wayland/niri 通知）
 │   ├── local/bin/
 │   │   ├── dank-ocr      # Wayland 框选 OCR
 │   │   ├── install-dank-ocr-models
