@@ -77,7 +77,7 @@ ZSH_THEME="powerlevel10k/powerlevel10k"
 # Custom plugins may be added to $ZSH_CUSTOM/plugins/
 # Example format: plugins=(rails git textmate ruby lighthouse)
 # Add wisely, as too many plugins slow down shell startup.
-plugins=(git fzf-tab zsh-autosuggestions zsh-syntax-highlighting z sudo command-not-found)
+plugins=(git fzf-tab zsh-autosuggestions zsh-syntax-highlighting sudo command-not-found)
 
 # Catppuccin Frappé：语法高亮配色须在 zsh-syntax-highlighting 加载前设置
 [[ -r ~/.config/zsh/catppuccin_frappe-zsh-syntax-highlighting.zsh ]] && \
@@ -156,12 +156,13 @@ export FZF_DEFAULT_OPTS="--tmux center --height 40% --layout=reverse --border \
 # fzf 全局搜索（从 $HOME 开始，不限于当前目录）
 # Ctrl+T 搜索文件，Alt+C 搜索目录
 export FZF_CTRL_T_COMMAND="fd --type f --hidden --follow --exclude .git . $HOME"
-export FZF_ALT_C_COMMAND="fd --type d --hidden --follow --exclude .git . $HOME"
+# Alt+C：zoxide 按 frecency（常用+最近）排在最前，fd 全量目录兜底在后；去掉 fd 的尾斜杠后去重
+export FZF_ALT_C_COMMAND="{ zoxide query -l; fd --type d --hidden --follow --exclude .git . \$HOME | sed 's#/\$##'; } | awk '!seen[\$0]++'"
 
 # 只有选「文件」时才用 bat 预览（避免 Ctrl-R 把历史命令当文件喂给 bat）
 export FZF_CTRL_T_OPTS="--preview 'bat --style=numbers --color=always --line-range :500 {}'"
 # 选「目录」时用 eza 预览目录树
-export FZF_ALT_C_OPTS="--preview 'lsd --tree --depth 2 --color=always {} | head -200'"
+export FZF_ALT_C_OPTS="--tiebreak=index --preview 'lsd --tree --depth 2 --color=always {} | head -200'"
 
 # fzf-tab：把 Tab 补全菜单换成 fzf 界面 + 预览
 zstyle ':fzf-tab:*' switch-group '<' '>'                       # 用 < > 切换补全分组
