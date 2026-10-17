@@ -50,3 +50,9 @@ arch/config/kitty/dank-*.conf
 config/nvim/.codex
 config/nvim/*.log
 config/nvim/.nvimlog
+
+# Python 字节码缓存
+__pycache__/
+
+# matugen 按壁纸生成的 Firefox 配色（随主题重算）
+arch/config/DankMaterialShell/firefox.css
