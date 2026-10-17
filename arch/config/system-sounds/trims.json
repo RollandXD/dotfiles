@@ -1,0 +1,13 @@
+{
+  "volume": 0.0,
+  "login": 0,
+  "notification": 0.0,
+  "critical": 0,
+  "power-plug": 0,
+  "power-unplug": 0,
+  "screenshot": 0,
+  "bell": 0.0,
+  "timer": 0,
+  "claude-done": 0.0,
+  "claude-ask": 0.0
+}

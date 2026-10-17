@@ -1,0 +1,13 @@
+{
+  "id": "rollandSystemSounds",
+  "name": "提示音",
+  "description": "统一提示音音量、静音、试听与逐来源响度校准",
+  "version": "1.0.0",
+  "author": "Rolland",
+  "type": "composite",
+  "capabilities": ["daemon", "control-center"],
+  "components": {"daemon": "SoundsDaemon.qml", "widget": "SoundsWidget.qml"},
+  "icon": "notifications_active",
+  "requires_dms": ">=1.6.2",
+  "permissions": ["process", "settings_read", "settings_write"]
+}

@@ -1,0 +1,43 @@
+{
+  "claude-done": {
+    "file": "~/.claude/mods/chime/sounds/done.wav",
+    "event": "claude-done",
+    "label": "Claude · 回合结束",
+    "group": "ai",
+    "kind": "script",
+    "level": "momentary"
+  },
+  "claude-ask": {
+    "file": "~/.claude/mods/chime/sounds/ask.wav",
+    "event": "claude-ask",
+    "label": "Claude · 需要确认",
+    "group": "ai",
+    "kind": "script",
+    "level": "momentary"
+  },
+  "claude-nudge": {
+    "file": "~/.claude/mods/chime/sounds/nudge.wav",
+    "event": "claude-nudge",
+    "label": "Claude · 加强提醒",
+    "group": "ai",
+    "kind": "script",
+    "level": "momentary",
+    "offset_db": 3
+  },
+  "codex-done": {
+    "file": "~/.config/system-sounds/sounds/codex-done.wav",
+    "event": "codex-done",
+    "label": "Codex · 回合结束",
+    "group": "ai",
+    "kind": "script",
+    "level": "momentary"
+  },
+  "codex-ask": {
+    "file": "~/.config/system-sounds/sounds/codex-ask.wav",
+    "event": "codex-ask",
+    "label": "Codex · 需要确认",
+    "group": "ai",
+    "kind": "script",
+    "level": "momentary"
+  }
+}

@@ -1,0 +1,668 @@
+#!/usr/bin/env python3
+"""统一事件声音：音量/静音主控、离线响度校准、逐来源开关与接入诊断。不采集通知正文。"""
+import argparse
+import array
+import ctypes as C
+import ctypes.util
+from contextlib import contextmanager
+import fcntl
+import hashlib
+import json
+import math
+import os
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+import unicodedata
+from urllib.parse import unquote, urlparse
+
+ROLE = b"sink-input-by-media-role:event"
+HOME = Path.home()
+CACHE = Path(os.environ.get("XDG_CACHE_HOME", str(HOME / ".cache"))) / "system-sounds"
+CONFIG = Path(os.environ.get("XDG_CONFIG_HOME", str(HOME / ".config"))) / "system-sounds"
+
+# 内置来源：id -> (freedesktop 事件名, 分组, 面板标签)
+BUILTIN = {
+    "volume": ("audio-volume-change", "system", "音量反馈"),
+    "notification": ("message", "system", "普通通知"),
+    "critical": ("message-new-instant", "system", "紧急通知"),
+    "login": ("desktop-login", "system", "登录"),
+    "power-plug": ("power-plug", "system", "接入电源"),
+    "power-unplug": ("power-unplug", "system", "拔出电源"),
+    "screenshot": ("camera-shutter", "tools", "截图"),
+    "bell": ("bell", "tools", "终端响铃"),
+    "timer": ("alarm-clock-elapsed", "tools", "计时器 / 闹钟"),
+}
+EVENTS = {name: spec[0] for name, spec in BUILTIN.items()}
+TRIM_LIMIT = 6  # 用户微调范围 ±dB
+SOURCE_NAME = re.compile(r"[A-Za-z0-9_-]+")
+
+def emit(value):
+    print(json.dumps(value, ensure_ascii=False, allow_nan=False), flush=True)
+
+def run(args, **kwargs):
+    return subprocess.run(args, check=True, capture_output=True, **kwargs)
+
+# ───────────────────────── libpulse：只操作 event 恢复键 ─────────────────────────
+
+class ChannelMap(C.Structure):
+    _fields_ = [("channels", C.c_uint8), ("map", C.c_int * 32)]
+
+class Volume(C.Structure):
+    _fields_ = [("channels", C.c_uint8), ("values", C.c_uint32 * 32)]
+
+class RestoreInfo(C.Structure):
+    _fields_ = [("name", C.c_char_p), ("channel_map", ChannelMap), ("volume", Volume), ("device", C.c_char_p), ("mute", C.c_int)]
+
+READ_CB = C.CFUNCTYPE(None, C.c_void_p, C.POINTER(RestoreInfo), C.c_int, C.c_void_p)
+SUCCESS_CB = C.CFUNCTYPE(None, C.c_void_p, C.c_int, C.c_void_p)
+CHANGE_CB = C.CFUNCTYPE(None, C.c_void_p, C.c_void_p)
+STREAM_CB = C.CFUNCTYPE(None, C.c_void_p, C.c_int, C.c_uint32, C.c_void_p)
+
+def percent_to_pa(percent):
+    return round(percent * 65536 / 100)
+
+class Pulse:
+    """使用公开 libpulse ABI；恢复键写入后再显式同步已存在的事件流。"""
+    def __init__(self):
+        self.lib = C.CDLL(ctypes.util.find_library("pulse") or "libpulse.so.0")
+        defs = {
+            "pa_mainloop_new": (C.c_void_p, []),
+            "pa_mainloop_get_api": (C.c_void_p, [C.c_void_p]),
+            "pa_mainloop_iterate": (C.c_int, [C.c_void_p, C.c_int, C.POINTER(C.c_int)]),
+            "pa_mainloop_free": (None, [C.c_void_p]),
+            "pa_context_new": (C.c_void_p, [C.c_void_p, C.c_char_p]),
+            "pa_context_connect": (C.c_int, [C.c_void_p, C.c_char_p, C.c_int, C.c_void_p]),
+            "pa_context_get_state": (C.c_int, [C.c_void_p]),
+            "pa_context_disconnect": (None, [C.c_void_p]),
+            "pa_context_unref": (None, [C.c_void_p]),
+            "pa_operation_unref": (None, [C.c_void_p]),
+            "pa_ext_stream_restore_read": (C.c_void_p, [C.c_void_p, READ_CB, C.c_void_p]),
+            "pa_ext_stream_restore_write": (C.c_void_p, [C.c_void_p, C.c_int, C.POINTER(RestoreInfo), C.c_uint, C.c_int, SUCCESS_CB, C.c_void_p]),
+            "pa_ext_stream_restore_subscribe": (C.c_void_p, [C.c_void_p, C.c_int, SUCCESS_CB, C.c_void_p]),
+            "pa_ext_stream_restore_set_subscribe_cb": (None, [C.c_void_p, CHANGE_CB, C.c_void_p]),
+            "pa_context_set_subscribe_callback": (None, [C.c_void_p, STREAM_CB, C.c_void_p]),
+            "pa_context_subscribe": (C.c_void_p, [C.c_void_p, C.c_int, SUCCESS_CB, C.c_void_p]),
+            "pa_context_set_sink_input_volume": (C.c_void_p, [C.c_void_p, C.c_uint32, C.POINTER(Volume), SUCCESS_CB, C.c_void_p]),
+            "pa_context_set_sink_input_mute": (C.c_void_p, [C.c_void_p, C.c_uint32, C.c_int, SUCCESS_CB, C.c_void_p]),
+        }
+        for name, (restype, argtypes) in defs.items():
+            fn = getattr(self.lib, name)
+            fn.restype, fn.argtypes = restype, argtypes
+        self.loop = self.lib.pa_mainloop_new()
+        self.context = self.lib.pa_context_new(self.lib.pa_mainloop_get_api(self.loop), b"System Sounds Controller")
+        self.callbacks = []  # watch() 的长期回调，防止被 GC
+        try:
+            if self.lib.pa_context_connect(self.context, None, 1, None) < 0:
+                raise RuntimeError("无法连接 PipeWire Pulse 服务")
+            self.wait(lambda: self.lib.pa_context_get_state(self.context) == 4)
+        except Exception:
+            self.close()
+            raise
+
+    # —— 事件循环 ——
+    def tick(self, block=False):
+        if self.lib.pa_mainloop_iterate(self.loop, int(block), None) < 0:
+            raise RuntimeError("音频事件循环异常")
+        if self.lib.pa_context_get_state(self.context) in (5, 6):
+            raise RuntimeError("音频服务已断开")
+
+    def wait(self, predicate):
+        deadline = time.monotonic() + 5
+        while not predicate():
+            self.tick()
+            if time.monotonic() > deadline:
+                raise RuntimeError("音频服务响应超时")
+            time.sleep(.005)
+
+    def call(self, start, error):
+        """发起一个以 SUCCESS_CB 收尾的异步调用并等待结果；返回回调的 success 值。"""
+        done = []
+        callback = SUCCESS_CB(lambda ctx, ok, userdata: done.append(ok))
+        op = start(callback)
+        if not op:
+            raise RuntimeError(error)
+        try:
+            self.wait(lambda: bool(done))
+        finally:
+            self.lib.pa_operation_unref(op)
+        return done[0]
+
+    # —— event 恢复键 ——
+    def get(self):
+        result, done = {}, []
+        def on_item(ctx, item, eol, userdata):
+            if eol:
+                done.append(eol)
+            elif item and item.contents.name == ROLE:
+                info = item.contents
+                n = info.volume.channels
+                result.update(found=True, percent=round(max(info.volume.values[:n], default=65536) * 100 / 65536), muted=bool(info.mute), device=(info.device or b"").decode(), channel_map=list(info.channel_map.map[:info.channel_map.channels]), volumes=list(info.volume.values[:n]))
+        callback = READ_CB(on_item)
+        op = self.lib.pa_ext_stream_restore_read(self.context, callback, None)
+        if not op:
+            raise RuntimeError("事件声音恢复接口不可用")
+        try:
+            self.wait(lambda: bool(done))
+        finally:
+            self.lib.pa_operation_unref(op)
+        if done[0] < 0:
+            raise RuntimeError("读取事件声音状态失败")
+        return {"available": True, "found": False, "percent": 100, "muted": False, **result}
+
+    def write(self, channel_map, volumes, device, muted, found):
+        info = RestoreInfo()
+        info.name = ROLE
+        info.channel_map.channels = len(channel_map)
+        info.channel_map.map[:len(channel_map)] = channel_map
+        info.volume.channels = len(volumes)
+        info.volume.values[:len(volumes)] = volumes
+        info.device = device.encode() or None
+        info.mute = int(muted)
+        mode = 2 if found else 1
+        ok = self.call(lambda cb: self.lib.pa_ext_stream_restore_write(self.context, mode, C.byref(info), 1, 1, cb, None), "写入事件声音状态失败")
+        if not ok:
+            raise RuntimeError("音频服务拒绝写入")
+        state = self.get()
+        self.sync_active(state)
+        return state
+
+    def set(self, percent=None, muted=None):
+        """统一保存左右声道相同的值，避免 WirePlumber 把 mono 数组原样恢复到 stereo。"""
+        old = self.get()
+        level = max(old.get("volumes") or [65536]) if percent is None else percent_to_pa(percent)
+        return self.write([1, 2], [level] * 2, old.get("device", ""), old["muted"] if muted is None else muted, old["found"])
+
+    def restore(self, raw):
+        """按备份文件原样写回恢复键（restore.py 使用）。"""
+        return self.write(raw["channel_map"], raw["volumes"], raw.get("device", ""), raw["muted"], self.get()["found"])
+
+    def sync_active(self, state):
+        """PipeWire 的恢复写入不总更新现有流；显式同步已存在的事件流。"""
+        streams = json.loads(run(["pactl", "-f", "json", "list", "sink-inputs"], text=True).stdout)
+        target = max(state.get("volumes") or [65536])
+        for stream in streams:
+            if stream.get("properties", {}).get("media.role") not in ("event", "Notification"):
+                continue
+            values = [v["value"] for v in stream.get("volume", {}).values()]
+            if not values:
+                continue
+            index = stream["index"]
+            if any(abs(v - target) > 2 for v in values):
+                volume = Volume()
+                volume.channels = len(values)
+                volume.values[:len(values)] = [target] * len(values)
+                self.call(lambda cb: self.lib.pa_context_set_sink_input_volume(self.context, index, C.byref(volume), cb, None), "同步事件流音量失败")
+            if stream["mute"] != state["muted"]:
+                self.call(lambda cb: self.lib.pa_context_set_sink_input_mute(self.context, index, int(state["muted"]), cb, None), "同步事件流静音失败")
+
+    def watch(self):
+        """订阅恢复键与新流变化，状态变更时输出一行 JSON；供 DMS 插件常驻读取。"""
+        dirty = [True]
+        def mark(*args):
+            dirty[0] = True
+        def on_stream(ctx, event, index, userdata):
+            if event & 15 == 2:  # PA_SUBSCRIPTION_EVENT_SINK_INPUT
+                dirty[0] = True
+        self.callbacks += [CHANGE_CB(mark), STREAM_CB(on_stream)]
+        self.lib.pa_ext_stream_restore_set_subscribe_cb(self.context, self.callbacks[0], None)
+        self.lib.pa_context_set_subscribe_callback(self.context, self.callbacks[1], None)
+        if not self.call(lambda cb: self.lib.pa_context_subscribe(self.context, 4, cb, None), "无法订阅事件声音流"):
+            raise RuntimeError("事件声音流订阅失败")
+        if not self.call(lambda cb: self.lib.pa_ext_stream_restore_subscribe(self.context, 1, cb, None), "无法订阅事件声音状态"):
+            raise RuntimeError("事件声音订阅失败")
+        previous = None
+        while True:
+            if dirty[0]:
+                dirty[0] = False
+                state = self.get()
+                self.sync_active(state)
+                if state != previous:
+                    emit(state)
+                    previous = state
+            self.tick(block=True)
+
+    def close(self):
+        if self.context:
+            self.lib.pa_context_disconnect(self.context)
+            self.lib.pa_context_unref(self.context)
+            self.context = None
+        if self.loop:
+            self.lib.pa_mainloop_free(self.loop)
+            self.loop = None
+
+@contextmanager
+def pulse():
+    p = Pulse()
+    try:
+        yield p
+    finally:
+        p.close()
+
+# ───────────────────────── 配置、缓存与来源 ─────────────────────────
+
+def read_json(path, default):
+    return json.loads(path.read_text()) if path.is_file() else default
+
+def atomic_json(path, value):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(mode="w", dir=path.parent, delete=False, encoding="utf-8") as f:
+        json.dump(value, f, ensure_ascii=False, indent=2, allow_nan=False)
+        f.write("\n")
+        temp = Path(f.name)
+    temp.replace(path)
+
+@contextmanager
+def manifest_lock():
+    CACHE.mkdir(parents=True, exist_ok=True)
+    with (CACHE / "manifest.lock").open("a") as handle:
+        fcntl.flock(handle, fcntl.LOCK_EX)
+        yield
+
+def read_manifest():
+    return read_json(CACHE / "manifest.json", {"sources": {}})
+
+def trims():
+    return read_json(CONFIG / "trims.json", {})
+
+def disabled():
+    return set(read_json(CONFIG / "disabled.json", []))
+
+def check_source_name(name):
+    if not SOURCE_NAME.fullmatch(name):
+        raise ValueError("来源标识只允许字母、数字、下划线和连字符")
+
+def sources():
+    """内置来源 + sources.json 自定义来源。自定义项与内置同名时按字段合并覆盖。"""
+    result = {}
+    shells = sorted(Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}"), "danklinux-shell").glob("*/Services/AudioService.qml"), key=lambda p: p.stat().st_mtime, reverse=True)
+    if shells:
+        assets = shells[0].parent.parent / "assets/sounds"
+        for name, (event, group, label) in BUILTIN.items():
+            file = assets / ("plasma" if name.startswith("power-") else "freedesktop") / (event + ".wav")
+            if file.is_file():
+                result[name] = {"file": str(file), "event": event, "kind": "DMS", "group": group, "label": label}
+    for name in ("screenshot", "bell", "timer"):
+        event, group, label = BUILTIN[name]
+        file = Path("/usr/share/sounds/freedesktop/stereo", event + ".oga")
+        if file.is_file():
+            result[name] = {"file": str(file), "event": event, "kind": "terminal" if name == "bell" else "script", "group": group, "label": label}
+    for name, custom in read_json(CONFIG / "sources.json", {}).items():
+        merged = {"kind": "custom", "group": "other", "label": name, "event": name} | result.get(name, {}) | custom
+        result[name] = merged
+    return result
+
+def resolve(name):
+    """来源规格；DMS 来源以实际校准过的原文件为准（用户可能换过声音主题）。"""
+    specs = sources()
+    if name not in specs:
+        raise ValueError(f"未知提示音来源: {name}")
+    spec = specs[name]
+    original = read_manifest()["sources"].get(name, {}).get("original")
+    if spec.get("kind") == "DMS" and original and Path(original).is_file():
+        spec = spec | {"file": original}
+    return spec
+
+# ───────────────────────── 响度校准 ─────────────────────────
+
+def measure(path):
+    pcm = run(["ffmpeg", "-v", "error", "-i", str(path), "-f", "f32le", "-ar", "48000", "-ac", "1", "-"]).stdout
+    samples = array.array("f")
+    samples.frombytes(pcm)
+    if sys.byteorder != "little":
+        samples.byteswap()
+    windows = []
+    for i in range(0, len(samples), 480):
+        chunk = samples[i:i+480]
+        if chunk:
+            windows.append((sum(x*x for x in chunk), len(chunk)))
+    max_energy = max((e/n for e, n in windows), default=0)
+    active = [(e, n) for e, n in windows if e/n > max_energy * .0001]
+    rms = 10 * math.log10(sum(e for e, n in active) / sum(n for e, n in active)) if active else None
+    log = run(["ffmpeg", "-hide_banner", "-nostats", "-i", str(path), "-af", "ebur128=peak=true:framelog=quiet", "-f", "null", "-"], text=True).stderr
+    lufs = re.findall(r"I:\s*(-?\d+(?:\.\d+)?) LUFS", log)
+    peaks = re.findall(r"Peak:\s*(-?\d+(?:\.\d+)?) dBFS", log)
+    duration = len(samples) / 48000
+    integrated = float(lufs[-1]) if lufs else None
+    valid = duration >= .4 and integrated is not None and integrated > -69
+    return {"duration": duration, "rms_dbfs": rms, "lufs": integrated if valid else None, "true_peak": float(peaks[-1]) if peaks else None, "method": "LUFS" if valid else "active-RMS"}
+
+def momentary_max(path):
+    """K 加权 400ms 瞬时响度的最大值（LUFS）。末尾补静音让短音也凑满窗口：
+    人耳对短音同样做时间积分，一声清脆的短音比同 RMS 的长衰减音听起来轻。"""
+    log = run(["ffmpeg", "-hide_banner", "-nostats", "-i", str(path), "-af", "apad=pad_dur=0.4,ebur128=framelog=info", "-f", "null", "-"], text=True).stderr
+    values = [float(x) for x in re.findall(r"\bM:\s*(-?\d+\.\d+)", log)]
+    return max(values) if values else None
+
+def alias(name, target):
+    check_source_name(name)
+    folder = CACHE / "current"
+    folder.mkdir(parents=True, exist_ok=True)
+    link = folder / (name + ".wav")
+    temp = folder / (name + ".tmp")
+    temp.unlink(missing_ok=True)
+    temp.symlink_to(target)
+    temp.replace(link)
+
+def encode(file, gain, out):
+    run(["ffmpeg", "-v", "error", "-y", "-i", str(file), "-af", f"volume={gain:.6f}dB", "-ar", "48000", "-ac", "2", "-c:a", "pcm_s24le", str(out)])
+
+MOMENTARY_TARGET = -28  # level=momentary 的默认目标（LUFS-M），比积分 LUFS 对“一声衰减的音”更贴近听感
+
+def calibrate_one(name, spec, trim=0, quiet=0):
+    """生成校准副本。trim 是用户微调（±6 dB）；spec['offset_db'] 是来源自带基准偏移；
+    quiet 是调用方临时要求的衰减（dB，≥0），变体只缓存、不改 current 别名。
+    spec['level']='momentary' 时按瞬时最大响度对齐 spec.get('target_m', -28)，缺省沿用积分 LUFS / 活动 RMS。"""
+    if not math.isfinite(trim) or not -TRIM_LIMIT <= trim <= TRIM_LIMIT:
+        raise ValueError("来源微调必须在 −6 至 +6 dB 之间")
+    if not math.isfinite(quiet) or not 0 <= quiet <= 30:
+        raise ValueError("衰减必须在 0 至 30 dB 之间")
+    offset = float(spec.get("offset_db", 0)) - quiet
+    file = Path(spec["file"]).expanduser().resolve(strict=True)
+    params = {"algorithm": 2, "trim": trim, "target_lufs": -24, "target_rms": -26, "peak": -3}
+    if offset:
+        params["offset"] = offset
+    momentary = spec.get("level") == "momentary"
+    target_m = float(spec.get("target_m", MOMENTARY_TARGET))
+    if momentary:
+        params["momentary"] = target_m
+    key = hashlib.sha256(file.read_bytes() + json.dumps(params, sort_keys=True).encode()).hexdigest()
+    target = CACHE / (key + ".wav")
+    metadata = CACHE / (key + ".json")
+    if target.is_file() and metadata.is_file():
+        result = read_json(metadata, {}) | {"name": name, "event": spec.get("event", "")}
+    else:
+        before = measure(file)
+        if before["rms_dbfs"] is None or before["true_peak"] is None:
+            raise ValueError(f"{name}: 静音或无法测量，不生成校准副本")
+        if momentary:
+            before["momentary"] = momentary_max(file)
+            if before["momentary"] is None:
+                raise ValueError(f"{name}: 无法测量瞬时响度")
+            before["method"] = "momentary"
+            level, goal = before["momentary"], target_m
+        else:
+            level = before["lufs"] if before["method"] == "LUFS" else before["rms_dbfs"]
+            goal = -24 if before["method"] == "LUFS" else -26
+        requested = goal - level + trim + offset
+        gain = min(requested, 6, -3 - before["true_peak"])
+        CACHE.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile(suffix=".wav", dir=CACHE, delete=False) as f:
+            temp = Path(f.name)
+        try:
+            encode(file, gain, temp)
+            after = measure(temp)
+            # 四舍五入的测量可能有 0.1 dB 误差；必要时再衰减，不用动态压缩。
+            if after["true_peak"] > -2.9:
+                gain -= after["true_peak"] + 3.1
+                encode(file, gain, temp)
+                after = measure(temp)
+            if momentary:
+                after["momentary"] = momentary_max(temp)
+            temp.replace(target)
+        finally:
+            temp.unlink(missing_ok=True)
+        result = {"name": name, "event": spec.get("event", ""), "original": str(file), "file": str(target), "gain_db": round(gain, 2), "trim_db": trim, "offset_db": offset, "limited": gain < requested - .15, "before": before, "after": after, "status": "已校准"}
+        atomic_json(metadata, result)
+    if not quiet:
+        alias(name, target)
+    return result
+
+def calibrate_all():
+    previous = read_manifest()["sources"]
+    user_trims = trims()
+    output = {}
+    for name, spec in sources().items():
+        try:
+            output[name] = calibrate_one(name, spec, user_trims.get(name, previous.get(name, {}).get("trim_db", 0)))
+        except (ValueError, OSError, subprocess.CalledProcessError) as error:
+            output[name] = {"name": name, "status": "未校准", "error": str(error)}
+    result = {"sources": output, "generated": time.strftime("%Y-%m-%d %H:%M:%S")}
+    atomic_json(CACHE / "manifest.json", result)
+    return result
+
+# ───────────────────────── 查询、播放与开关 ─────────────────────────
+
+def active_streams():
+    streams = json.loads(run(["pactl", "-f", "json", "list", "sink-inputs"], text=True).stdout)
+    keys = ("application.name", "application.id", "application.process.binary", "media.role", "event.id", "module-stream-restore.id")
+    return [{"index": s["index"], "properties": {k: s["properties"][k] for k in keys if k in s.get("properties", {})}, "notification": s.get("properties", {}).get("media.role") in ("event", "Notification")} for s in streams]
+
+def audit():
+    manifest = read_manifest()["sources"]
+    off = disabled()
+    rows = []
+    for name, spec in sources().items():
+        m = manifest.get(name, {})
+        gain = m.get("gain_db")
+        calibrated = m.get("status") == "已校准"
+        rows.append({
+            "id": name, "name": spec["label"], "group": spec["group"], "kind": spec["kind"],
+            "status": m.get("status", "未校准"), "file": m.get("original", spec["file"]),
+            "trim_db": m.get("trim_db", 0), "offset_db": spec.get("offset_db", 0), "gain_db": gain,
+            "limited": m.get("limited", False),
+            "boost_allowed": calibrated and gain < 5.99 and (m.get("after", {}).get("true_peak") or 0) < -3.05,
+            "enabled": name not in off,
+        })
+    return {"sources": rows, "active_streams": active_streams()}
+
+def play(name, quiet=0, force=False):
+    """经校准副本以 event 角色播放，音量由系统 event 恢复键决定。
+    统一静音始终生效；来源被关闭时静默返回，force（试听）可绕过。"""
+    if not force and name in disabled():
+        return
+    with pulse() as p:
+        if p.get()["muted"]:
+            return
+    spec = resolve(name)
+    with manifest_lock():
+        result = calibrate_one(name, spec, trims().get(name, 0), quiet)
+        if not quiet:
+            manifest = read_manifest()
+            if manifest["sources"].get(name, {}).get("file") != result["file"]:
+                manifest["sources"][name] = result
+                atomic_json(CACHE / "manifest.json", manifest)
+    run(["paplay", "--property=media.role=event", "--property=application.id=org.rolland.system-sounds", "--property=event.id=" + spec.get("event", name), "--stream-name=System sound: " + name, result["file"]])
+
+def set_enabled(name, enabled):
+    if name not in sources():
+        raise ValueError(f"未知提示音来源: {name}")
+    off = disabled()
+    off.discard(name) if enabled else off.add(name)
+    atomic_json(CONFIG / "disabled.json", sorted(off))
+    return {"id": name, "enabled": enabled}
+
+# ───────────────────────── 诊断：status / doctor ─────────────────────────
+
+PLAYER = r"(?:pw-play|paplay|aplay|canberra-gtk-play|ffplay)"
+# 命令位置（行首、分隔符、常见前缀命令之后）或数组字面量里的播放器；字符串里的提及不算
+DIRECT_PLAYER = re.compile(rf"(?:(?:^|[;&|(]|\bthen\b|\bdo\b|\bexec\b|\bsetsid(?:\s+-f)?\b|\bnohup\b|\btimeout\s+\S+)\s*{PLAYER}(?=\s|$)|['\"]{PLAYER}['\"]\s*[,\]])")
+SCAN_ROOTS = [".local/bin", ".claude/mods", ".config/niri", ".config/kitty", ".codex/hooks.json", "dotfiles/arch/local/bin", "dotfiles/arch/config/niri"]
+SCAN_SKIP = {"system-sounds", "node_modules", ".git", "__pycache__"}
+
+def scan_unmanaged():
+    """扫描常见脚本目录里绕过 system-sounds 直接发声的行；行尾加 `# system-sounds: allow` 可豁免。"""
+    seen, hits = set(), []
+    for root in SCAN_ROOTS:
+        base = HOME / root
+        files = [base] if base.is_file() else [p for p in base.rglob("*") if p.is_file() and not SCAN_SKIP & set(p.parts)] if base.is_dir() else []
+        for path in files:
+            real = path.resolve()
+            if real in seen or real.name in SCAN_SKIP or ".bak" in real.name or real.stat().st_size > 256_000:
+                continue
+            seen.add(real)
+            try:
+                lines = real.read_text().splitlines()
+            except (UnicodeDecodeError, OSError):
+                continue
+            for number, line in enumerate(lines, 1):
+                text = line.strip()
+                if text.startswith(("#", "//", "*")) or "system-sounds: allow" in text:
+                    continue
+                if DIRECT_PLAYER.search(text):
+                    hits.append(f"{str(real).replace(str(HOME), '~')}:{number}")
+    return hits
+
+def pad(text, width):
+    """按终端显示宽度补空格（中文占两格）。"""
+    used = sum(2 if unicodedata.east_asian_width(c) in "WF" else 1 for c in text)
+    return text + " " * max(1, width - used)
+
+def status_text():
+    with pulse() as p:
+        state = p.get()
+    rows = audit()["sources"]
+    head = "已静音" if state["muted"] else f"{state['percent']}%"
+    lines = [f"提示音统一音量：{head}"]
+    for group, title in (("system", "系统"), ("tools", "工具"), ("ai", "AI 助手"), ("other", "其他")):
+        part = [r for r in rows if r["group"] == group]
+        if part:
+            lines.append(f"\n{title}")
+        for r in part:
+            mark = "✓" if r["enabled"] else "✗"
+            note = "已关闭" if not r["enabled"] else r["status"] + (f" · 增益 {r['gain_db']:+.1f} dB" if r["gain_db"] is not None else "")
+            trim = f" · 微调 {r['trim_db']:+g} dB" if r["trim_db"] else ""
+            lines.append(f"  {mark} {pad(r['name'], 18)}{note}{trim}{'（增益受限）' if r['limited'] else ''}")
+    return "\n".join(lines)
+
+def doctor():
+    """返回 (检查列表, 是否全部通过)。检查项: (级别 ok/warn/fail, 文字)。"""
+    checks = []
+    def add(level, text):
+        checks.append((level, text))
+    missing = [t for t in ("ffmpeg", "ffprobe", "paplay", "pactl", "inotifywait") if not shutil.which(t)]
+    add("fail" if missing else "ok", "缺少依赖: " + ", ".join(missing) if missing else "依赖齐全 (ffmpeg / paplay / pactl / inotifywait)")
+    try:
+        with pulse() as p:
+            state = p.get()
+    except RuntimeError as error:
+        add("fail", f"音频服务不可用: {error}")
+        return checks, False
+    if not state["found"]:
+        add("warn", "event 恢复键尚未建立（首次设置音量后会生成）")
+    elif state["channel_map"] != [1, 2] or len(set(state["volumes"])) != 1:
+        add("fail", f"恢复键声道异常（map={state['channel_map']} volumes={state['volumes']}），重新执行 system-sounds volume set 即可修复")
+    else:
+        add("ok", f"统一音量 {state['percent']}%{'（已静音）' if state['muted'] else ''}，左右声道一致")
+    daemon = subprocess.run(["pgrep", "-f", "system-sounds watch"], capture_output=True).returncode == 0
+    add("ok" if daemon else "warn", "DMS 插件后台在运行" if daemon else "DMS 插件后台未运行：面板与通知声音不受控（dms.service 没起或插件未启用）")
+    rows = audit()
+    uncalibrated = [r["id"] for r in rows["sources"] if r["status"] != "已校准"]
+    add("warn" if uncalibrated else "ok", ("未校准来源: " + ", ".join(uncalibrated) + "（运行 system-sounds calibrate）") if uncalibrated else f"{len(rows['sources'])} 个来源均已校准")
+    off = [r["id"] for r in rows["sources"] if not r["enabled"]]
+    if off:
+        add("ok", "已关闭来源: " + ", ".join(off))
+    bypass = [s for s in rows["active_streams"] if s["properties"].get("application.process.binary") in ("pw-play", "paplay", "aplay") and not s["notification"]]
+    if bypass:
+        add("warn", f"此刻有 {len(bypass)} 个提示音流以非 event 角色播放，不受统一音量控制")
+    hits = scan_unmanaged()
+    add("warn" if hits else "ok", ("以下位置绕过 system-sounds 直接发声: " + "; ".join(hits)) if hits else "未发现绕过 system-sounds 的脚本")
+    return checks, all(level != "fail" for level, _ in checks)
+
+# ───────────────────────── 命令行 ─────────────────────────
+
+def command_volume(args, parser):
+    with pulse() as p:
+        if args.action == "get":
+            return p.get()
+        current = p.get()
+        if args.action == "set":
+            if args.value is None or not 0 <= args.value <= 100:
+                parser.error("音量必须为 0–100 的整数")
+            return p.set(percent=args.value)
+        step = 5 if args.value is None else args.value
+        if step < 1:
+            parser.error("步长必须为正整数")
+        up = args.action == "up"
+        return p.set(percent=max(0, min(100, current["percent"] + (step if up else -step))), muted=False if up else None)
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    subs = parser.add_subparsers(dest="command", required=True)
+    volume = subs.add_parser("volume", help="get | set N | up [步长] | down [步长]")
+    volume.add_argument("action", choices=["get", "set", "up", "down"])
+    volume.add_argument("value", nargs="?", type=int)
+    mute = subs.add_parser("mute", help="on | off | toggle")
+    mute.add_argument("action", choices=["on", "off", "toggle"])
+    subs.add_parser("watch", help="常驻：状态变化时输出 JSON（供 DMS 插件使用）")
+    subs.add_parser("status", help="人类可读的音量与来源概览")
+    subs.add_parser("doctor", help="检查依赖、恢复键、插件后台与绕过统一音量的脚本")
+    subs.add_parser("audit", help="JSON：来源清单与当前播放流")
+    subs.add_parser("calibrate", help="重新校准所有来源")
+    play_parser = subs.add_parser("play", help="以 event 角色播放某来源")
+    play_parser.add_argument("source")
+    play_parser.add_argument("--quiet", type=float, default=0, metavar="DB", help="临时衰减 DB 分贝（例如终端聚焦时轻响）")
+    play_parser.add_argument("--force", action="store_true", help="来源被关闭时仍播放（试听）")
+    for verb in ("enable", "disable"):
+        subs.add_parser(verb, help=f"{'开启' if verb == 'enable' else '关闭'}某来源的提示音").add_argument("source")
+    prepare = subs.add_parser("prepare", help="校准一个外部文件（DMS 插件调用）")
+    prepare.add_argument("source")
+    prepare.add_argument("file")
+    trim = subs.add_parser("trim", help="来源微调 DB（±6）")
+    trim.add_argument("source")
+    trim.add_argument("db", type=float)
+    restore = subs.add_parser("restore-volume")
+    restore.add_argument("file")
+    args = parser.parse_args()
+    command = args.command
+    if command == "volume":
+        emit(command_volume(args, parser))
+    elif command == "mute":
+        with pulse() as p:
+            emit(p.set(muted=not p.get()["muted"] if args.action == "toggle" else args.action == "on"))
+    elif command == "watch":
+        with pulse() as p:
+            p.watch()
+    elif command == "restore-volume":
+        with pulse() as p:
+            emit(p.restore(read_json(Path(args.file), {})))
+    elif command == "status":
+        print(status_text())
+    elif command == "doctor":
+        checks, healthy = doctor()
+        icons = {"ok": "✓", "warn": "!", "fail": "✗"}
+        for level, text in checks:
+            print(f"{icons[level]} {text}")
+        sys.exit(0 if healthy else 1)
+    elif command == "audit":
+        emit(audit())
+    elif command == "calibrate":
+        with manifest_lock():
+            emit(calibrate_all())
+    elif command in ("enable", "disable"):
+        emit(set_enabled(args.source, command == "enable"))
+    elif command == "prepare":
+        check_source_name(args.source)
+        with manifest_lock():
+            manifest = read_manifest()
+            file = unquote(urlparse(args.file).path) if args.file.startswith("file://") else args.file
+            spec = {"file": file, "event": EVENTS.get(args.source, args.source)}
+            result = calibrate_one(args.source, spec, trims().get(args.source, manifest["sources"].get(args.source, {}).get("trim_db", 0)))
+            manifest["sources"][args.source] = result
+            atomic_json(CACHE / "manifest.json", manifest)
+            emit(result)
+    elif command == "trim":
+        if not math.isfinite(args.db) or not -TRIM_LIMIT <= args.db <= TRIM_LIMIT:
+            parser.error("微调限制为 −6 至 +6 dB")
+        with manifest_lock():
+            spec = resolve(args.source)
+            manifest = read_manifest()
+            manifest["sources"][args.source] = result = calibrate_one(args.source, spec, args.db)
+            atomic_json(CONFIG / "trims.json", trims() | {args.source: args.db})
+            atomic_json(CACHE / "manifest.json", manifest)
+            emit(result)
+    else:
+        play(args.source, args.quiet, args.force)
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (ValueError, OSError, RuntimeError, subprocess.CalledProcessError) as error:
+        emit({"available": False, "error": str(error)})
+        sys.exit(1)
+    except KeyboardInterrupt:
+        pass
