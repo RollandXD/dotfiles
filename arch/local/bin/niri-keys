@@ -1,0 +1,129 @@
+#!/usr/bin/env python3
+"""niri 快捷键速查：用 fuzzel 列出全部绑定，可搜索，回车直接执行。
+
+数据来自 `dms keybinds show niri`（会跟随 include），说明取各绑定的
+hotkey-overlay-title。再次运行会关闭已打开的速查窗口。
+"""
+import json
+import os
+import shlex
+import signal
+import subprocess
+import sys
+import unicodedata
+
+PIDFILE = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "niri-keys.pid")
+
+CATEGORY = {
+    "Window": "窗口", "Workspace": "工作区", "Monitor": "显示器", "Alt-Tab": "窗口切换",
+    "Execute": "启动", "Other": "其他", "Screenshot": "截图", "Overview": "总览", "System": "系统",
+}
+
+# 没写 hotkey-overlay-title 的绑定（如 DMS 生成的 alttab.kdl）兜底用
+FALLBACK = {
+    "next-window": "切换窗口", "previous-window": "反向切换窗口",
+}
+
+KEY_NAMES = {
+    "Mod": "Super", "Semicolon": ";", "Slash": "/", "Comma": ",", "Period": ".",
+    "Minus": "-", "Equal": "=", "BracketLeft": "[", "BracketRight": "]", "grave": "`",
+    "Left": "←", "Right": "→", "Up": "↑", "Down": "↓", "Escape": "Esc", "Delete": "Del",
+    "Page_Up": "PgUp", "Page_Down": "PgDn",
+    "WheelScrollDown": "滚轮↓", "WheelScrollUp": "滚轮↑", "MouseMiddle": "鼠标中键",
+    "MouseForward": "鼠标前侧键", "MouseBack": "鼠标后侧键",
+}
+
+# 只能由真实按键触发、niri msg 无法执行的动作
+NOT_RUNNABLE = {"next-window", "previous-window"}
+
+
+def toggle_existing():
+    """已有速查窗口时关掉它并返回 True。"""
+    try:
+        pid = int(open(PIDFILE).read().strip())
+        os.kill(pid, signal.SIGTERM)
+        return True
+    except (OSError, ValueError):
+        return False
+
+
+def pretty_key(key):
+    parts = []
+    for p in key.split("+"):
+        if p.startswith("XF86"):
+            p = p[4:]
+        parts.append(KEY_NAMES.get(p, p))
+    return "+".join(parts)
+
+
+def width(s):
+    return sum(2 if unicodedata.east_asian_width(c) in "WF" else 1 for c in s)
+
+
+def pad(s, n):
+    return s + " " * max(1, n - width(s))
+
+
+def load_binds():
+    out = subprocess.run(["dms", "keybinds", "show", "niri"], capture_output=True, text=True, check=True)
+    data = json.loads(out.stdout)["binds"]
+    order = list(CATEGORY)
+    rows = []
+    for cat in sorted(data, key=lambda c: order.index(c) if c in order else len(order)):
+        for b in data[cat]:
+            action = b.get("action", "")
+            desc = b.get("desc") or FALLBACK.get(action.split(" ")[0], action)
+            rows.append((pretty_key(b["key"]), desc, CATEGORY.get(cat, cat), action))
+    return rows
+
+
+def run_action(action):
+    name, _, rest = action.partition(" ")
+    if name == "spawn":
+        args = [os.path.expanduser(a) for a in shlex.split(rest)]
+        subprocess.Popen(args, start_new_session=True)
+    elif name == "spawn-sh":
+        subprocess.Popen(["sh", "-c", rest], start_new_session=True)
+    elif name in NOT_RUNNABLE:
+        subprocess.run(["notify-send", "-a", "niri-keys", "这个快捷键只能直接按", action])
+    else:
+        # 参数可能以 - 开头（如 -5%），用 -- 隔开
+        args = shlex.split(rest)
+        subprocess.run(["niri", "msg", "action", name] + (["--"] + args if args else []))
+
+
+def main():
+    if toggle_existing():
+        return
+    try:
+        rows = load_binds()
+    except (OSError, subprocess.CalledProcessError, ValueError, KeyError) as e:
+        subprocess.run(["notify-send", "-a", "niri-keys", "读取快捷键失败", str(e)])
+        sys.exit(1)
+
+    kw = max(width(r[0]) for r in rows) + 3
+    dw = max(width(r[1]) for r in rows) + 3
+    lines = [f"{i}\t{pad(k, kw)}{pad(d, dw)}{c}" for i, (k, d, c, _) in enumerate(rows)]
+
+    proc = subprocess.Popen(
+        ["fuzzel", "--dmenu", "--with-nth=2", "--accept-nth=1",
+         "--font=JetBrains Maple Mono:size=12", f"--width={kw + dw + 10}", "--lines=22",
+         "--prompt=快捷键 ", "--placeholder=搜索按键或功能，回车执行", "--counter"],
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+    try:
+        with open(PIDFILE, "w") as f:
+            f.write(str(proc.pid))
+        chosen, _ = proc.communicate("\n".join(lines))
+    finally:
+        try:
+            os.remove(PIDFILE)
+        except OSError:
+            pass
+
+    chosen = chosen.strip()
+    if proc.returncode == 0 and chosen.isdigit():
+        run_action(rows[int(chosen)][3])
+
+
+if __name__ == "__main__":
+    main()

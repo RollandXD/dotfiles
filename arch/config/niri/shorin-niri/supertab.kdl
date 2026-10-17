@@ -21,10 +21,10 @@ recent-windows {
 
     binds {
         // scope可以设置显示的窗口是当前工作区的、还是当前显示器的、或者显示全部窗口
-        Mod+Tab         { next-window scope="workspace"; }
-        Mod+Shift+Tab   { previous-window scope="workspace"; }
+        Mod+Tab hotkey-overlay-title="切换本工作区窗口" { next-window scope="workspace"; }
+        Mod+Shift+Tab hotkey-overlay-title="反向切换本工作区窗口" { previous-window scope="workspace"; }
         // grave是波浪键，显示当前应用的所有窗口
-        Mod+grave       { next-window     filter="app-id"; }
-        Mod+Shift+grave { previous-window filter="app-id"; }
+        Mod+grave hotkey-overlay-title="切换同应用窗口" { next-window filter="app-id"; }
+        Mod+Shift+grave hotkey-overlay-title="反向切换同应用窗口" { previous-window filter="app-id"; }
     }
 }

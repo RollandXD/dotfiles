@@ -3,7 +3,7 @@
 // https://yalter.github.io/niri/Configuration:-Window-Rules
 
 // 放进overview里的壁纸程序
-layer-rule{
+layer-rule {
     match namespace="dms:blurwallpaper"
      place-within-backdrop true
 }
@@ -14,7 +14,7 @@ window-rule {
     open-floating true
     }
 //shorinclip剪贴板TUI 
-window-rule{
+window-rule {
 	match app-id="shorinclip"
 	default-column-width { fixed 625; }
     default-window-height { fixed 700; }
@@ -64,7 +64,7 @@ window-rule {
 	open-floating true
 	default-floating-position x=20 y=20 relative-to="top"
 }
-window-rule{
+window-rule {
     match app-id="bluetui"
     match app-id="impala"
 default-column-width { fixed 800; }
@@ -83,7 +83,7 @@ window-rule {
     match app-id="waydroid"
     open-fullscreen true
     open-floating true
-    focus-ring{
+    focus-ring {
         off
     }
     shadow {
