@@ -28,7 +28,8 @@ input {
             // If this section is empty, niri will fetch xkb settings
             // from org.freedesktop.locale1. You can control these using
             // localectl set-x11-keymap.
-            options "ctrl:nocaps"
+            // 大写键改由 keyd 处理（/etc/keyd/default.conf），这里不再设 ctrl:nocaps
+            options ""
         }
 
         // Enable numlock on startup, omitting this setting disables it.
