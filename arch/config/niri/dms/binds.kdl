@@ -36,8 +36,8 @@ binds {
     Ctrl+XF86AudioLowerVolume allow-when-locked=true { spawn "dms" "ipc" "call" "mpris" "decrement" "3"; }
 
     // === 亮度控制 ===
-    XF86MonBrightnessUp allow-when-locked=true { spawn "dms" "ipc" "call" "brightness" "increment" "5" ""; }
-    XF86MonBrightnessDown allow-when-locked=true { spawn "dms" "ipc" "call" "brightness" "decrement" "5" ""; }
+    XF86MonBrightnessUp allow-when-locked=true { spawn "dank-brightness" "up"; }
+    XF86MonBrightnessDown allow-when-locked=true { spawn "dank-brightness" "down"; }
 
     // === 工作区导航补充 (无冲突项) ===
     Mod+Page_Down          { focus-workspace-down; }

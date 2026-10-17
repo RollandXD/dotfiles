@@ -1,0 +1,49 @@
+#!/bin/sh
+# 亮度设备选择：按焦点屏幕 + 内屏实际所接显卡，选真正能调亮度的设备，再交给 DMS（保留 OSD）。
+# 用法：dank-brightness up|down [步长，默认 5]   —— 亮度键调用
+#       dank-brightness which                 —— 打印 panel/mode/external 三行，供 DMS 插件 rollandBrightness 读取
+# 内屏接 NVIDIA（独显直连）→ backlight:nvidia_0
+# 内屏接 Intel（Hybrid）   → backlight:nvidia_wmi_ec_backlight（EC 控制，需模块 force=1）
+# 外接屏                    → 第一个 ddc 设备（i2c 总线号会变，所以每次现查）
+
+# 输出 "设备 模式"；设备不存在时设备为空
+resolve_panel() {
+    for c in /sys/class/drm/card*-eDP-*; do
+        [ "$(cat "$c/enabled" 2>/dev/null)" = enabled ] || continue
+        card=$(basename "$c"); card=${card%%-*}
+        drv=$(basename "$(readlink -f "/sys/class/drm/$card/device/driver")")
+        case "$drv" in
+            nvidia) dev=backlight:nvidia_0; mode=direct ;;
+            *)      dev=backlight:nvidia_wmi_ec_backlight; mode=hybrid ;;
+        esac
+        [ -e "/sys/class/backlight/${dev#backlight:}" ] || dev=""
+        echo "${dev:--} $mode"
+        return
+    done
+}
+
+resolve_external() {
+    dms ipc call brightness list 2>/dev/null | awk '$1 ~ /^ddc:/ {print $1; exit}'
+}
+
+case "$1" in
+    which)
+        set -- $(resolve_panel)
+        echo "panel ${1#-}"
+        echo "mode ${2:-}"
+        echo "external $(resolve_external)"
+        exit 0
+        ;;
+    up) act=increment ;;
+    down) act=decrement ;;
+    *) echo "用法: $0 up|down [步长] | which" >&2; exit 1 ;;
+esac
+step=${2:-5}
+
+out=$(niri msg -j focused-output 2>/dev/null | jq -r '.name // empty')
+case "$out" in
+    eDP-*|"") dev=$(resolve_panel | cut -d' ' -f1); [ "$dev" = - ] && dev="" ;;   # 为空则退回 DMS 默认
+    *)        dev=$(resolve_external) ;;
+esac
+
+exec dms ipc call brightness "$act" "$step" "$dev"

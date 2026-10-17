@@ -1,0 +1,13 @@
+{
+  "id": "rollandBrightness",
+  "name": "屏幕亮度",
+  "description": "只列真正能调的亮度：内屏（按独显直连/Hybrid 自动选背光设备）、外接屏（DDC）、键盘灯；设备判断与 Fn 键共用 dank-brightness",
+  "version": "1.0.0",
+  "author": "Rolland",
+  "type": "widget",
+  "capabilities": ["control-center"],
+  "component": "./ScreenBrightness.qml",
+  "icon": "brightness_medium",
+  "requires_dms": ">=1.6.2",
+  "permissions": ["process"]
+}
