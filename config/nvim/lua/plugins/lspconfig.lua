@@ -1,27 +1,74 @@
+-- ========== LSP 配置 ==========
+-- nvim-lspconfig 的 lsp/*.lua 已提供各 server 的 cmd / filetypes / root_markers / 默认 on_attach，
+-- 这里只写与默认不同的部分；通用键位等统一由 config/lsp-on-attach.lua 的 LspAttach 处理。
+
+local servers = {
+  "basedpyright",
+  "clangd",
+  "cmake",
+  "copilot",
+  "jsonls",
+  "lua_ls",
+  "marksman",
+  "ruff",
+  "taplo",
+  "yamlls",
+}
+
 return {
   "neovim/nvim-lspconfig",
   event = { "BufReadPre", "BufNewFile" },
   dependencies = {
-    "williamboman/mason.nvim",
-    "williamboman/mason-lspconfig.nvim",
+    "mason-org/mason.nvim",
+    "mason-org/mason-lspconfig.nvim",
   },
 
   config = function()
-    -- 安装 mason-lspconfig
+    -- 日志只记错误：stderr 噪声曾把 lsp.log 撑到 400+ MB
+    vim.lsp.log.set_level(vim.log.levels.ERROR)
+
     require("mason-lspconfig").setup({
-      -- CMake LSP 由 pacman 管理，其余服务器交给 Mason。
+      -- CMake LSP 由 pacman 管理；jdtls 由 nvim-jdtls 启动，但同样交给 Mason 安装
       ensure_installed = {
+        "basedpyright",
         "clangd",
+        "copilot",
         "jdtls",
-        "jedi_language_server",
         "jsonls",
         "lua_ls",
-        "pyright",
+        "marksman",
         "ruff",
         "taplo",
         "yamlls",
       },
       automatic_enable = false,
+    })
+
+    require("config.lsp-on-attach").setup()
+
+    -- 所有 server 共享 blink.cmp 的补全能力声明
+    vim.lsp.config("*", {
+      capabilities = require("blink.cmp").get_lsp_capabilities(),
+    })
+
+    -- ===== C / C++ =====
+    vim.lsp.config("clangd", {
+      cmd = {
+        "clangd",
+        "--background-index",
+        "--clang-tidy",
+        "--header-insertion=iwyu",
+        "--completion-style=detailed",
+        "--function-arg-placeholders",
+        "--fallback-style=Google",
+        "-j=4", -- 限制并发索引线程数
+        "--pch-storage=memory", -- PCH 存内存，提升响应速度
+      },
+      init_options = {
+        clangdFileStatus = true,
+        usePlaceholders = true,
+        completeUnimported = true,
+      },
     })
 
     local function is_clangd_outline_action(action)
@@ -35,175 +82,13 @@ return {
 
     local function create_cpp_implementation()
       -- 优先用 nt-cpp-tools（Treesitter，不依赖 clangd 索引），失败回退到 clangd
-      local ok = pcall(vim.cmd, "TSCppImplWrite")
-      if ok then
+      if pcall(vim.cmd, "TSCppImplWrite") then
         return
       end
-
-      vim.lsp.buf.code_action({
-        filter = is_clangd_outline_action,
-        apply = true,
-      })
+      vim.lsp.buf.code_action({ filter = is_clangd_outline_action, apply = true })
     end
 
-    -- LSP 附加时的通用配置（从共享模块引入）
-    local lsp_on_attach = require("config.lsp-on-attach")
-
-    -- pyright 会为「未使用的 import / 变量」额外发一条 Hint 级诊断（如 `"sys" is not accessed`），
-    -- 内容与 ruff 的 F401 完全重合，同一行会出现两条。它是 pyright 硬编码行为，
-    -- diagnosticSeverityOverrides 关不掉，客户端 handlers 在 Neovim 0.12 的诊断路径上也不会被调用。
-    -- 可行的是按 namespace 收敛显示层：pyright 的 Hint 不再渲染，同样的问题交给 ruff 报（还能一键修复）。
-    --
-    -- 注意 namespace 的实际名字是 `nvim.lsp.pyright.<client_id>.<server 自报的 identifier>`，
-    -- vim.lsp.diagnostic.get_namespace() 返回的是不带 identifier 后缀的那个，对不上，
-    -- 所以这里按名字前缀匹配；namespace 要等第一批诊断到达才创建，因此挂在 DiagnosticChanged 上。
-    local muted_ns = {}
-    local at_least_info = { min = vim.diagnostic.severity.INFO }
-    vim.api.nvim_create_autocmd("DiagnosticChanged", {
-      group = vim.api.nvim_create_augroup("UserMutePyrightHints", { clear = true }),
-      callback = function()
-        for name, ns in pairs(vim.api.nvim_get_namespaces()) do
-          if not muted_ns[ns] and name:match("^nvim%.lsp%.pyright%.%d+") then
-            muted_ns[ns] = true
-            vim.diagnostic.config({
-              virtual_text = { severity = at_least_info },
-              signs = { severity = at_least_info },
-              underline = { severity = at_least_info },
-            }, ns)
-          end
-        end
-      end,
-    })
-
-    local on_attach = function(client, bufnr)
-      -- 调用通用 on_attach（快捷键、inlay hints、document highlight 等）
-      lsp_on_attach.on_attach(client, bufnr)
-
-      -- ===== Python 三个 server 的分工（避免能力重叠导致补全重复、gd 弹选择列表）=====
-      -- pyright: 类型检查 / 补全 / 跳转 / 重命名 / 标准 hover
-      -- jedi: 仅供智能 gh 在 Pyright 无正文时定向请求运行时文档
-      -- ruff: 只做 lint 诊断 + code action
-      local sc = client.server_capabilities
-
-      -- Jedi 不公开参与原生 hover，避免和 Pyright 拼出两份结果；智能 gh 仍可直接向它发请求。
-      -- 其他能力也全部交还 Pyright，否则补全项与定义位置都会出现两份。
-      if client.name == "jedi_language_server" then
-        sc.hoverProvider = false
-        for _, capability in ipairs({ "completionProvider", "signatureHelpProvider" }) do
-          sc[capability] = nil
-        end
-        for _, capability in ipairs({
-          "codeActionProvider",
-          "declarationProvider",
-          "definitionProvider",
-          "documentHighlightProvider",
-          "documentSymbolProvider",
-          "implementationProvider",
-          "inlayHintProvider",
-          "referencesProvider",
-          "renameProvider",
-          "typeDefinitionProvider",
-          "workspaceSymbolProvider",
-        }) do
-          sc[capability] = false
-        end
-      end
-
-      -- ruff 只做 lint 诊断和 code action（自动删未用 import 等），格式化仍走 conform
-      if client.name == "ruff" then
-        sc.completionProvider = nil
-        for _, capability in ipairs({
-          "definitionProvider",
-          "documentFormattingProvider",
-          "documentRangeFormattingProvider",
-          "hoverProvider",
-          "referencesProvider",
-          "renameProvider",
-        }) do
-          sc[capability] = false
-        end
-      end
-
-      -- clangd 专属快捷键
-      if client.name == "clangd" then
-        local opts = { noremap = true, silent = true, buffer = bufnr }
-        vim.keymap.set("n", "<leader>ch", function()
-          local params = { uri = vim.uri_from_bufnr(bufnr) }
-          client:request("textDocument/switchSourceHeader", params, function(err, result)
-            if err or not result then
-              vim.notify("无法切换头/源文件", vim.log.levels.WARN)
-              return
-            end
-            vim.cmd("edit " .. vim.uri_to_fname(result))
-          end, bufnr)
-        end, vim.tbl_extend("force", opts, { desc = "切换头/源文件" }))
-        vim.keymap.set("n", "<leader>ci", create_cpp_implementation,
-          vim.tbl_extend("force", opts, { desc = "为声明生成定义" }))
-      end
-    end
-
-    -- 通用 LSP 能力配置（与 blink.cmp 集成）
-    local capabilities = require("blink.cmp").get_lsp_capabilities()
-    local python_tools = require("config.python")
-
-    -- Lua LSP 配置（用于编辑 Neovim 配置）
-    -- 使用新的 vim.lsp.config API（Neovim 0.11+）
-    vim.lsp.config("lua_ls", {
-      cmd = { "lua-language-server" },
-      root_markers = { ".luarc.json", ".git" },
-      filetypes = { "lua" },
-      on_attach = on_attach,
-      capabilities = capabilities,
-      settings = {
-        Lua = {
-          runtime = { version = "LuaJIT" },
-          diagnostics = {
-            globals = { "vim" },  -- 识别 vim 全局变量
-          },
-          workspace = {
-            checkThirdParty = false,
-          },
-          telemetry = { enable = false },
-        },
-      },
-    })
-
-    -- C / C++ LSP 配置
-    vim.lsp.config("clangd", {
-      cmd = {
-        "clangd",
-        "--background-index",
-        "--clang-tidy",
-        "--header-insertion=iwyu",
-        "--completion-style=detailed",
-        "--function-arg-placeholders",
-        "--fallback-style=Google",
-        "-j=4",                         -- 限制并发索引线程数
-        "--pch-storage=memory",         -- PCH 存内存，提升响应速度
-      },
-      root_markers = { "compile_commands.json", "compile_flags.txt", ".clangd", ".git" },
-      filetypes = { "c", "cpp", "objc", "objcpp", "cuda" },
-      on_attach = on_attach,
-      capabilities = vim.tbl_deep_extend("force", capabilities, {
-        offsetEncoding = { "utf-16" },
-      }),
-      init_options = {
-        clangdFileStatus = true,
-        usePlaceholders = true,
-        completeUnimported = true,
-      },
-    })
-
-    -- CMake LSP 配置
-    vim.lsp.config("cmake", {
-      cmd = { "cmake-language-server" },
-      root_markers = { "CMakeLists.txt", ".git" },
-      filetypes = { "cmake" },
-      on_attach = on_attach,
-      capabilities = capabilities,
-    })
-
-    -- JSON/YAML 的 SchemaStore 目录只在对应服务器真正启动时加载。
+    -- ===== JSON / YAML：SchemaStore 目录只在对应服务器真正启动时加载 =====
     local function add_schemastore(kind)
       return function(_, config)
         local ok, schemastore = pcall(require, "schemastore")
@@ -213,123 +98,85 @@ return {
       end
     end
 
-    -- JSON LSP 配置（支持 SchemaStore 自动加载常见配置文件的 schema）
     vim.lsp.config("jsonls", {
-      cmd = { "vscode-json-language-server", "--stdio" },
-      filetypes = { "json", "jsonc" },
-      on_attach = on_attach,
-      capabilities = capabilities,
       before_init = add_schemastore("json"),
       settings = {
-        json = {
-          schemas = {},
-          validate = { enable = true },
-        },
+        json = { schemas = {}, validate = { enable = true } },
       },
     })
 
-    -- YAML LSP 配置（pre-commit / GitHub Actions 等）
     vim.lsp.config("yamlls", {
-      cmd = { "yaml-language-server", "--stdio" },
-      filetypes = { "yaml", "yaml.docker-compose", "yaml.gitlab" },
-      root_markers = { ".pre-commit-config.yaml", ".github", ".git" },
-      on_attach = on_attach,
-      capabilities = capabilities,
       before_init = add_schemastore("yaml"),
       settings = {
         yaml = {
-          schemaStore = {
-            enable = false,
-            url = "",
-          },
+          -- 关掉内置的远程 SchemaStore，改用上面本地的 SchemaStore.nvim
+          schemaStore = { enable = false, url = "" },
           schemas = {},
           validate = true,
-          hover = true,
-          completion = true,
         },
       },
     })
 
-    -- TOML LSP 配置（pyproject.toml / taplo.toml）
-    vim.lsp.config("taplo", {
-      cmd = { "taplo", "lsp", "stdio" },
-      filetypes = { "toml" },
-      root_markers = { "taplo.toml", ".taplo.toml", "pyproject.toml", ".git" },
-      on_attach = on_attach,
-      capabilities = capabilities,
+    -- ===== Lua：vim 全局变量与插件类型由 lazydev.nvim 注入 =====
+    vim.lsp.config("lua_ls", {
+      settings = {
+        Lua = {
+          runtime = { version = "LuaJIT" },
+          workspace = { checkThirdParty = false },
+          telemetry = { enable = false },
+        },
+      },
     })
 
-    -- Python LSP 配置
-    vim.lsp.config("pyright", {
-      cmd = { "pyright-langserver", "--stdio" },
-      root_markers = { "pyproject.toml", "setup.py", "setup.cfg", "requirements.txt", ".git" },
-      filetypes = { "python" },
-      on_attach = on_attach,
-      capabilities = capabilities,
+    -- ===== Python =====
+    -- basedpyright：类型检查 / 补全 / 跳转 / hover（自带内置模块 docstring）。
+    -- lspconfig 默认 disableTaggedHints = true，「未使用的 import」等只由 ruff 报一次。
+    -- ruff：只做 lint 诊断与 code action；格式化走 conform（ruff_organize_imports + ruff_format）。
+    local python_tools = require("config.python")
+    vim.lsp.config("basedpyright", {
       before_init = function(params, config)
         local root = config.root_dir
           or (params.workspaceFolders and params.workspaceFolders[1] and vim.uri_to_fname(params.workspaceFolders[1].uri))
           or vim.fn.getcwd()
         config.settings = vim.tbl_deep_extend("force", config.settings or {}, {
-          python = {
-            pythonPath = python_tools.python_path(root),
-          },
+          python = { pythonPath = python_tools.python_path(root) },
         })
       end,
       settings = {
-        python = {
+        basedpyright = {
           analysis = {
-            autoSearchPaths = true,
             diagnosticMode = "workspace",
-            useLibraryCodeForTypes = true,
+            -- 保持 pyright 标准档的检查强度，避免 basedpyright 默认 recommended 档满屏警告
+            typeCheckingMode = "standard",
           },
         },
       },
     })
 
-    -- Ruff LSP：提供 lint 诊断与 code action（如「移除未使用的 import」），
-    -- 格式化不交给它（由 conform 的 ruff_organize_imports / ruff_format 负责）
-    -- 注：cmd 是启动进程时使用的静态值，无法按 buffer 切换；ruff 的 lint 规则读项目
-    -- 自己的 pyproject.toml / ruff.toml，所以用哪个二进制对结果影响很小。
-    -- 真正需要项目内 ruff 版本的场景（conform 格式化、CLI 任务）都已走 python_tools.executable。
-    vim.lsp.config("ruff", {
-      cmd = { vim.fs.joinpath(vim.fn.stdpath("data"), "mason", "bin", "ruff"), "server" },
-      filetypes = { "python" },
-      root_markers = { "pyproject.toml", "ruff.toml", ".ruff.toml", "setup.py", "setup.cfg", ".git" },
-      on_attach = on_attach,
-      capabilities = capabilities,
-    })
+    -- server 专属调整：在通用 LspAttach 之后再挂一层
+    vim.api.nvim_create_autocmd("LspAttach", {
+      group = vim.api.nvim_create_augroup("UserLspServerTweaks", { clear = true }),
+      callback = function(args)
+        local client = vim.lsp.get_client_by_id(args.data.client_id)
+        if not client then
+          return
+        end
+        local bufnr = args.buf
 
-    -- Jedi：只负责 hover 文档（能读运行时 __doc__，补上 pyright 对 builtins 缺失的 docstring）
-    vim.lsp.config("jedi_language_server", {
-      cmd = { "jedi-language-server" },
-      filetypes = { "python" },
-      root_markers = { "pyproject.toml", "setup.py", "setup.cfg", "requirements.txt", ".git" },
-      on_attach = on_attach,
-      capabilities = capabilities,
-      before_init = function(params, config)
-        local root = config.root_dir
-          or (params.workspaceFolders and params.workspaceFolders[1] and vim.uri_to_fname(params.workspaceFolders[1].uri))
-          or vim.fn.getcwd()
-        config.init_options = vim.tbl_deep_extend("force", config.init_options or {}, {
-          workspace = {
-            environmentPath = python_tools.python_path(root),
-          },
-        })
+        -- ruff 的 hover 只解释 noqa 规则码，会和 basedpyright 的文档拼在一起，关掉
+        if client.name == "ruff" then
+          client.server_capabilities.hoverProvider = false
+        end
+
+        if client.name == "clangd" then
+          vim.keymap.set("n", "<leader>ch", "<cmd>LspClangdSwitchSourceHeader<cr>",
+            { buffer = bufnr, desc = "切换头/源文件" })
+          vim.keymap.set("n", "<leader>ci", create_cpp_implementation,
+            { buffer = bufnr, desc = "为声明生成定义" })
+        end
       end,
     })
 
-    -- 自动启用 LSP（当打开对应文件类型时）
-    vim.lsp.enable({
-      "clangd",
-      "cmake",
-      "jedi_language_server",
-      "jsonls",
-      "lua_ls",
-      "pyright",
-      "ruff",
-      "taplo",
-      "yamlls",
-    })
+    vim.lsp.enable(servers)
   end,
 }

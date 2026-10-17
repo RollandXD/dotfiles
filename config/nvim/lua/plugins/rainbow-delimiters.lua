@@ -5,13 +5,12 @@ return {
   "HiPhish/rainbow-delimiters.nvim",
   event = "BufReadPost",
   dependencies = { "nvim-treesitter/nvim-treesitter" },
-  config = function()
-    local rainbow = require("rainbow-delimiters")
-
+  -- 配置必须在插件附加到第一个 buffer 之前就绪，所以放在 init 而不是 config
+  init = function()
     ---@type rainbow_delimiters.config
     vim.g.rainbow_delimiters = {
       strategy = {
-        [""] = rainbow.strategy["global"],
+        [""] = "rainbow-delimiters.strategy.global",
       },
       query = {
         [""] = "rainbow-delimiters",

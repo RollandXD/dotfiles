@@ -12,6 +12,6 @@ return {
   keys = {
     { "<leader>Ps", function() require("persistence").load() end, desc = "恢复当前目录会话" },
     { "<leader>Pl", function() require("persistence").load({ last = true }) end, desc = "恢复最近会话" },
-    { "<leader>Pd", function() require("persistence").stop() end, desc = "不保存退出" },
+    { "<leader>Pd", function() require("persistence").stop() end, desc = "本次退出不保存会话" },
   },
 }

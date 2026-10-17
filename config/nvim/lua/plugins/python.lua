@@ -1,9 +1,10 @@
 -- ========== Python 工程体验 ==========
 -- 面向 ruff + mypy + pytest 的轻量 Python 项目流。
 -- uv 项目走 `uv run`，其它项目（poetry / 裸 venv / conda）直接调 venv 里的可执行文件。
+-- venv 的激活由 config/python.lua 按 buffer 自动完成（见 autocmds.lua），不再用 venv-selector。
 
 local function fs_stat(path)
-  return path and (vim.uv or vim.loop).fs_stat(path) or nil
+  return path and vim.uv.fs_stat(path) or nil
 end
 
 local function run_project_task(name, command)
@@ -59,33 +60,10 @@ end
 
 return {
   {
-    "linux-cultist/venv-selector.nvim",
-    ft = "python",
-    cmd = { "VenvSelect", "VenvSelectLog", "VenvSelectCache" },
-    keys = {
-      { "<leader>pv", "<cmd>VenvSelect<cr>", desc = "选择 Python 虚拟环境" },
-    },
-    opts = {
-      options = {
-        picker = "snacks",
-        notify_user_on_venv_activation = true,
-        activate_venv_in_terminal = true,
-        set_environment_variables = true,
-      },
-      search = {
-        workspace = {
-          command = "$FD '/bin/python$' '$WORKSPACE_PATH' --full-path --color never -I -a -L -E .git/ -E site-packages/",
-        },
-      },
-    },
-  },
-
-  {
     "nvim-neotest/neotest",
     dependencies = {
       "nvim-neotest/nvim-nio",
       "nvim-lua/plenary.nvim",
-      "antoinemadec/FixCursorHold.nvim",
       "nvim-treesitter/nvim-treesitter",
       "nvim-neotest/neotest-python",
     },

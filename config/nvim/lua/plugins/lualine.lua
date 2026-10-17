@@ -1,9 +1,6 @@
 return {
   "nvim-lualine/lualine.nvim",
   lazy = false,
-  dependencies = {
-    "nvim-tree/nvim-web-devicons",
-  },
   config = function()
     local ui = require("config.ui")
     local lualine = require("lualine")
@@ -98,11 +95,9 @@ return {
           -- Grapple 标签显示
           {
             function()
-              local ok, grapple_line = pcall(require, "grapple-line")
-              if ok then
-                return grapple_line.lualine()
-              end
-              return ""
+              -- 只读已加载的模块：直接 require 会绕过 VeryLazy 在启动时把 grapple 拉起来
+              local grapple_line = package.loaded["grapple-line"]
+              return grapple_line and grapple_line.lualine() or ""
             end,
           },
         },

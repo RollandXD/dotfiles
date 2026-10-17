@@ -5,7 +5,6 @@ return {
 
   dependencies = {
     "nvim-treesitter/nvim-treesitter",
-    "nvim-tree/nvim-web-devicons",
   },
   opts = {
     -- markview 默认已经配置好了绝佳的效果

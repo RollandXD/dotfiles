@@ -97,9 +97,8 @@ return {
         init_options = {
           bundles = debug_bundles(),
         },
-        on_attach = function(client, bufnr)
-          require("config.lsp-on-attach").on_attach(client, bufnr)
-
+        -- 通用 LSP 键位由 config/lsp-on-attach.lua 的 LspAttach 自动挂上，这里只加 Java 专属操作
+        on_attach = function(_, bufnr)
           vim.keymap.set("n", "<leader>Jo", jdtls.organize_imports, { buffer = bufnr, desc = "整理 Java 导入" })
           vim.keymap.set("n", "<leader>Jv", jdtls.extract_variable, { buffer = bufnr, desc = "提取变量" })
           vim.keymap.set("v", "<leader>Jv", function()

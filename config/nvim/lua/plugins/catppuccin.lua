@@ -8,22 +8,10 @@ return {
     require("catppuccin").setup({
       flavour = "frappe",  -- 变体：latte, frappe, macchiato, mocha
       transparent_background = false,  -- 透明背景
+      -- 按 lazy.nvim 已安装的插件自动启用对应集成（grug-far、mason、ufo、rainbow 等都会覆盖到）
+      auto_integrations = true,
       integrations = {
-        aerial = true,
         blink_cmp = { style = "bordered" },
-        dap = true,
-        dap_ui = true,
-        flash = true,
-        gitsigns = true,
-        lualine = {},
-        markview = true,
-        noice = true,
-        notify = true,
-        snacks = { enabled = true },
-        treesitter = true,
-        which_key = true,
-        navic = { enabled = true },
-        -- 后续可按需启用更多集成
       },
     })
 

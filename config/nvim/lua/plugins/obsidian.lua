@@ -45,9 +45,9 @@ return {
       folder = "Templates",
     },
 
-    -- UI 设置（不与 render-markdown.nvim 冲突）
+    -- UI 设置（渲染交给 markview.nvim，避免两套装饰叠加）
     ui = {
-      enable = false,   -- 禁用自带 UI，用你已有的 render-markdown.nvim
+      enable = false,   -- 禁用自带 UI，用 markview.nvim
     },
   },
   keys = {

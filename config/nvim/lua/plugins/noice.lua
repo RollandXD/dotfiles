@@ -5,7 +5,7 @@ return {
   "folke/noice.nvim",
   event = "VeryLazy",
   dependencies = {
-    "MunifTanjim/nui.nvim",       -- 你已有
+    "MunifTanjim/nui.nvim",
     "folke/snacks.nvim",          -- 通知路由到 snacks.notifier
   },
   opts = {
@@ -28,8 +28,8 @@ return {
         ["vim.lsp.util.convert_input_to_markdown_lines"] = true,
         ["vim.lsp.util.stylize_markdown"] = true,
       },
-      -- LSP 进度交给 fidget.nvim，避免重复显示
-      progress = { enabled = false },
+      -- LSP 进度（原 fidget.nvim 的职责）由 noice 的 mini 视图在右下角显示
+      progress = { enabled = true },
     },
 
     -- 预设

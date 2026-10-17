@@ -36,6 +36,11 @@ return {
 
     for key, mapping in pairs(move_keymaps) do
       vim.keymap.set({ "n", "x", "o" }, key, function()
+        -- diff 模式下 ]c / [c 必须保持原生的「下/上一个改动」（Diffview、:diffsplit 依赖它）
+        if vim.wo.diff and (key == "]c" or key == "[c") then
+          vim.cmd("normal! " .. vim.v.count1 .. key)
+          return
+        end
         ts_move[mapping.fn](mapping.query, "textobjects")
       end, { desc = mapping.desc })
     end

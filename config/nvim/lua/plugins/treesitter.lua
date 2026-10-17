@@ -6,17 +6,26 @@ return {
   config = function()
     local treesitter = require("nvim-treesitter")
     local parsers = {
-      "lua",
-      "vim",
-      "vimdoc",
+      "bash",
       "c",
-      "cpp",
       "cmake",
-      "python",
+      "cpp",
+      "diff",
+      "gitcommit",
+      "html", -- markview / snacks.image 渲染内嵌 HTML
+      "java",
+      "json",
+      "latex", -- markview 渲染数学公式
+      "lua",
       "markdown",
       "markdown_inline",
-      "yaml",
+      "python",
+      "regex",
+      "sql",
       "toml",
+      "vim",
+      "vimdoc",
+      "yaml",
     }
 
     treesitter.setup()
@@ -24,7 +33,10 @@ return {
 
     vim.api.nvim_create_autocmd("FileType", {
       group = vim.api.nvim_create_augroup("UserTreesitterStart", { clear = true }),
-      pattern = { "lua", "vim", "help", "c", "cpp", "cmake", "python", "markdown", "yaml", "toml" },
+      pattern = {
+        "bash", "c", "cmake", "cpp", "diff", "gitcommit", "help", "java", "json", "jsonc",
+        "lua", "markdown", "python", "sh", "sql", "toml", "vim", "yaml",
+      },
       callback = function(args)
         if pcall(vim.treesitter.start, args.buf) then
           vim.bo[args.buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"

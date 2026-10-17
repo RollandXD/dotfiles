@@ -7,7 +7,6 @@ return {
   priority = 1000,
   dependencies = {
     "echasnovski/mini.icons",
-    "nvim-tree/nvim-web-devicons",
   },
   init = function()
     vim.o.timeout = true
@@ -52,7 +51,7 @@ return {
       { "g", group = "跳转/LSP" },
       -- LSP 相关
       { "gd", desc = "跳转到定义" },
-      { "gh", desc = "智能悬浮文档" },
+      { "gh", desc = "悬浮文档" },
       { "gr", group = "LSP 重构" },
       { "grr", desc = "查找引用" },
       { "gra", desc = "代码操作", mode = { "n", "v" } },
@@ -161,7 +160,8 @@ return {
       { "[d", desc = "上一个诊断" },
       { "[h", desc = "上一个 Git 改动" },
       { "[f", desc = "上一个函数" },
-      { "[c", desc = "上一个类" },
+      { "[c", desc = "上一个类（diff 中：上一个改动）" },
+      { "[C", desc = "跳到 Treesitter 上下文" },
       -- Vim 内置
       { "[(", desc = "上一个未匹配 (" },
       { "[{", desc = "上一个未匹配 {" },
@@ -183,7 +183,7 @@ return {
       { "[L", desc = "第一个位置列表项" },
       { "[q", desc = "上一个快速修复项" },
       { "[Q", desc = "第一个快速修复项" },
-      { "[t", desc = "上一个标签" },
+      { "[t", desc = "上一个 TODO" },
       { "[T", desc = "第一个标签" },
       { "[<C-L>", desc = "上一个位置列表文件" },
       { "[<C-Q>", desc = "上一个快速修复文件" },
@@ -198,7 +198,7 @@ return {
       { "]d", desc = "下一个诊断" },
       { "]h", desc = "下一个 Git 改动" },
       { "]f", desc = "下一个函数" },
-      { "]c", desc = "下一个类" },
+      { "]c", desc = "下一个类（diff 中：下一个改动）" },
       -- Vim 内置
       { "])", desc = "下一个未匹配 )" },
       { "]}", desc = "下一个未匹配 }" },
@@ -220,7 +220,7 @@ return {
       { "]L", desc = "最后一个位置列表项" },
       { "]q", desc = "下一个快速修复项" },
       { "]Q", desc = "最后一个快速修复项" },
-      { "]t", desc = "下一个标签" },
+      { "]t", desc = "下一个 TODO" },
       { "]T", desc = "最后一个标签" },
       { "]<C-L>", desc = "下一个位置列表文件" },
       { "]<C-Q>", desc = "下一个快速修复文件" },

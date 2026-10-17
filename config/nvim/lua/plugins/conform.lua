@@ -1,13 +1,14 @@
 return {
   "stevearc/conform.nvim",
+  -- 必须在 BufWritePre 时加载，否则 format_on_save 要等手动按过 <leader>cf 才生效
+  event = "BufWritePre",
   cmd = "ConformInfo",
   keys = {
     {
       "<leader>cf",
       function()
         require("conform").format({
-          async = false,
-          timeout_ms = 1000,
+          async = true,
           lsp_format = "fallback",
         })
       end,

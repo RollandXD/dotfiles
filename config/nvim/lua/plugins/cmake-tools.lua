@@ -20,7 +20,7 @@ local cmake_opts = {
 }
 
 local function path_exists(path, kind)
-  local uv = vim.uv or vim.loop
+  local uv = vim.uv
   local stat = uv.fs_stat(path)
   if not stat then
     return false
@@ -200,7 +200,7 @@ local function sync_cmake_root(bufnr)
   -- cmake-tools 会在 DirChanged 时保存旧项目并加载新项目 session。
   -- 必须先修正历史 session，再切换目录，避免读入旧的 build/ 路径。
   ensure_preset_session(root)
-  if (vim.uv or vim.loop).cwd() ~= root then
+  if vim.uv.cwd() ~= root then
     vim.cmd.cd(vim.fn.fnameescape(root))
   end
 

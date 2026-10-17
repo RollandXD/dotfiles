@@ -11,6 +11,9 @@ require("config.options")
 -- 加载快捷键映射
 require("config.keymaps")
 
+-- 原生能力的补充映射（gco/gcO 注释、内置 undotree）
+require("config.builtins")
+
 -- 加载插件管理器（lazy.nvim）
 require("config.lazy")
 

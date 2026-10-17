@@ -38,8 +38,9 @@ return {
   },
   config = function(_, opts)
     require("mini.icons").setup(opts)
-    -- 让依赖 nvim-web-devicons 的插件（lualine / trouble / aerial / grapple ...）
-    -- 也走 mini.icons，避免同一个文件在不同 UI 里显示两套图标。
+    -- 不安装 nvim-web-devicons：mock 会注册同名模块（package.preload），
+    -- 让 lualine / trouble / aerial / grapple 等与 snacks 显示同一套图标。
+    -- mini.icons 以最高优先级立即加载，因此一定早于任何 require("nvim-web-devicons")。
     require("mini.icons").mock_nvim_web_devicons()
   end,
 }

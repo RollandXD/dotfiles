@@ -6,9 +6,8 @@ return {
   -- Grapple 主插件
   {
     "cbochs/grapple.nvim",
-    dependencies = { "nvim-tree/nvim-web-devicons" },
     cmd = "Grapple",
-    -- 移除 event 加载，仅在使用快捷键/命令时才加载
+    -- 本身按键/命令触发；状态栏的 grapple-line 会在 VeryLazy 时把它一并拉起
     opts = {
       scope = "git",              -- 按 Git 仓库自动分组
       icons = true,               -- 显示文件图标
@@ -32,6 +31,8 @@ return {
   -- Grapple-Line: 在 lualine 显示标记的文件
   {
     "will-lynas/grapple-line.nvim",
+    -- 推迟到首屏绘制之后再加载，不占启动时间；标签随后出现在状态栏
+    event = "VeryLazy",
     dependencies = {
       "cbochs/grapple.nvim",
       "nvim-lualine/lualine.nvim",

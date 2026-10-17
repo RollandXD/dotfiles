@@ -1,5 +1,5 @@
 return {
-  "williamboman/mason.nvim",
+  "mason-org/mason.nvim",
   cmd = "Mason",  -- 输入 :Mason 时才加载
   keys = {
     { "<leader>m", "<cmd>Mason<cr>", desc = "打开 Mason" },

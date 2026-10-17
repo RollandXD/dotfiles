@@ -117,7 +117,7 @@ LSP 附加到当前 Buffer 后生效：
 | 按键 | 功能 |
 | --- | --- |
 | `gd` | 跳转到定义 |
-| `gh` | 智能悬浮文档（Pyright 优先，无正文时回退 Jedi） |
+| `gh` | 悬浮文档（Python 由 basedpyright 提供，含内置函数 docstring） |
 | `grr` | 查找引用 |
 | `gra` | 代码操作（普通/可视模式） |
 | `grn` | 预览式重命名 |
@@ -133,7 +133,7 @@ LSP 附加到当前 Buffer 后生效：
 | `<leader>cj` | TreeSJ 拆分 / 合并当前代码结构 |
 | `<leader>xp` / `<leader>xP` | 参数与后一个 / 前一个参数交换 |
 | `[f` / `]f` | 上一个 / 下一个函数 |
-| `[c` / `]c` | 上一个 / 下一个类 |
+| `[c` / `]c` | 上一个 / 下一个类；diff 模式下保持原生的上一个 / 下一个改动 |
 
 Treesitter 文本对象：`af` / `if` 选择整个函数 / 函数体，`ac` / `ic` 选择整个类 /
 类体，`aa` / `ia` 选择参数（含逗号）/ 参数值；用于可视和操作符等待模式。
@@ -160,7 +160,6 @@ Treesitter 文本对象：`af` / `if` 选择整个函数 / 函数体，`ac` / `i
 
 | 按键 | 功能 |
 | --- | --- |
-| `<leader>pv` | 选择 Python 虚拟环境 |
 | `<leader>pt` / `<leader>pT` | 运行当前测试 / 当前文件测试 |
 | `<leader>pl` / `<leader>pd` | 重跑上次测试 / 调试当前测试 |
 | `<leader>ps` / `<leader>pO` | 测试结构 / 输出面板 |
@@ -185,7 +184,7 @@ Treesitter 文本对象：`af` / `if` 选择整个函数 / 函数体，`ac` / `i
 | `[h` / `]h` | 上一个 / 下一个 Git 改动块 |
 | `<leader>hs` / `<leader>hr` | 暂存 / 重置改动块或可视选区 |
 | `<leader>hS` / `<leader>hR` | 暂存 / 重置整个文件 |
-| `<leader>hu` / `<leader>hp` | 撤销暂存 / 预览改动块 |
+| `<leader>hp` / `<leader>hi` | 浮窗预览 / 行内预览改动块（`<leader>hs` 在已暂存块上再按即取消暂存） |
 | `<leader>hb` / `<leader>hB` | 查看当前行 Blame / 持续切换 Blame |
 | `<leader>hd` / `<leader>hD` | Diff 当前文件 / 与 HEAD 比较 |
 | `ih` | Git 改动块文本对象（可视/操作符等待） |
@@ -216,7 +215,7 @@ LazyGit 用于快速日常操作；Neogit 保留为更偏编辑器内、Magit �
 | `<C-\>` | 切换唯一的浮动终端 |
 | `<leader>tv` | 右侧垂直终端 |
 | `<leader>tz` / `<leader>td` | 禅模式 / Dim 聚焦模式 |
-| `<leader>tu` | 撤销历史树 |
+| `<leader>tu` | 撤销历史树（Neovim 0.12 内置 `:Undotree`） |
 | `<leader>ut` | 切换 Treesitter 上下文行 |
 | `<leader>un` | 通知历史 |
 | `<leader>us` / `<leader>uw` | 拼写检查 / 自动换行 |
@@ -224,7 +223,7 @@ LazyGit 用于快速日常操作；Neogit 保留为更偏编辑器内、Magit �
 | `<leader>uc` | Conceal 显示 |
 | `<leader>m` | Mason |
 | `<leader>tD` | 数据库界面 |
-| `<leader>ai` | 切换 Copilot 自动建议 |
+| `<leader>ai` | 切换 Copilot 行内建议（Neovim 原生 inline completion） |
 | `<leader>aa` | 在 Neovim 输入问题并发送到 OpenCode |
 | `<leader>ap` | 将选区/光标上下文追加到 OpenCode prompt，不提交 |
 | `<leader>ae` / `<leader>ar` / `<leader>am` | 解释 / 审查 / 实现当前代码 |
@@ -233,9 +232,9 @@ LazyGit 用于快速日常操作；Neogit 保留为更偏编辑器内、Magit �
 
 OpenCode 优先连接 tmux 中用 `oc`（即 `opencode --port`）启动的当前项目服务；只有找不到
 匹配服务时，才在 Neovim 右侧启动备用终端。备用终端在普通和终端模式下可用 `<C-.>`
-切换，Alt-HJKL 可导航且重新进入后会自动进入输入模式。浮动终端在普通和终端模式下都用 `<C-\>` 开关。Copilot 插入模式快捷键：
-`<A-y>` 接受全部、`<A-w>` 接受一个词、`<A-l>` 接受到行尾、`<A-]>` / `<A-[>`
-切换建议、`<A-e>` 忽略建议。
+切换，Alt-HJKL 可导航且重新进入后会自动进入输入模式。浮动终端在普通和终端模式下都用 `<C-\>` 开关。Copilot 走 Neovim 0.12 原生
+行内补全（`copilot-language-server`，未登录时运行 `:LspCopilotSignIn`）。插入模式：`<A-y>` 接受建议，
+`<A-]>` / `<A-[>` 切换建议；原生接口没有按词 / 按行接受，忽略建议直接继续输入或按 `<Esc>`。
 
 ## 会话与 Obsidian
 
@@ -258,8 +257,9 @@ Obsidian 工作区。
   `<leader>Ma` 对齐。可视模式还有 `<leader>Ms`、`<leader>Mt/MT`、`I`、`A`。
 - Flash：`s` 普通跳转，`S` 语法树跳转，操作符模式 `r` 远程跳转，`R` 语法树搜索，
   命令行 `<C-s>` 切换 Flash 搜索。
-- 注释：`gcc` / `gbc` 行注释 / 块注释，`gc{motion}` / `gb{motion}` 范围注释，
-  `gcO` / `gco` / `gcA` 在上方 / 下方 / 行尾添加注释。
+- 注释（Neovim 原生 + ts-comments 修正嵌入语言）：`gcc` 行注释，`gc{motion}` / 可视 `gc`
+  范围注释，`gc` 也是「注释块」文本对象（如 `dgc`）；`gcO` / `gco` 在上方 / 下方添加注释。
+  原 Comment.nvim 的 `gb` 块注释与 `gcA` 已不再提供。
 - Surround：`ys{motion}{char}` 添加包裹，`yss{char}` 包裹整行，`ds{char}` 删除，
   `cs{target}{replacement}` 替换。
 - Autopairs：插入模式 `<M-e>` 快速包裹。

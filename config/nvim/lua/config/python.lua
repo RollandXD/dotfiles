@@ -13,7 +13,7 @@ local root_markers = {
 }
 
 local function path_exists(path)
-  return path and (vim.uv or vim.loop).fs_stat(path) ~= nil
+  return path and vim.uv.fs_stat(path) ~= nil
 end
 
 local function dirname(path)
@@ -26,7 +26,7 @@ local function start_path(bufnr)
   if name ~= "" then
     return path_exists(name) and name or dirname(name)
   end
-  return (vim.uv or vim.loop).cwd()
+  return vim.uv.cwd()
 end
 
 -- root 查找会向上遍历目录，而 BufEnter 每次切 buffer 都会触发，
@@ -40,7 +40,7 @@ function M.root(bufnr)
     return cached
   end
 
-  local found = vim.fs.root(start, root_markers) or (vim.uv or vim.loop).cwd()
+  local found = vim.fs.root(start, root_markers) or vim.uv.cwd()
   root_cache[start] = found
   return found
 end

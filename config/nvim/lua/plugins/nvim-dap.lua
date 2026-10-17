@@ -148,26 +148,9 @@ return {
         },
       }
 
-      -- C/C++ 调试配置
+      -- C/C++ 调试配置：只放通用项。项目专属的启动配置写进项目根目录的
+      -- .vscode/launch.json，nvim-dap 会自动合并（模板见 docs/launch.json.example）
       local cpp_configs = {
-        {
-          name = "LongMarch 调试（Debug）",
-          type = "codelldb",
-          request = "launch",
-          program = "${workspaceFolder}/build/debug/Application/LongMarch",
-          cwd = "${workspaceFolder}/build/debug/Application",
-          stopOnEntry = false,
-          args = {},
-        },
-        {
-          name = "LongMarch 调试（Release）",
-          type = "codelldb",
-          request = "launch",
-          program = "${workspaceFolder}/build/release/Application/LongMarch",
-          cwd = "${workspaceFolder}/build/release/Application",
-          stopOnEntry = false,
-          args = {},
-        },
         {
           name = "启动（选择可执行文件）",
           type = "codelldb",
@@ -288,7 +271,7 @@ return {
   {
     "jay-babu/mason-nvim-dap.nvim",
     lazy = true, -- 由 nvim-dap 的 dependencies 拉起（首次按 F5/F9 等调试键时）
-    dependencies = { "williamboman/mason.nvim" },
+    dependencies = { "mason-org/mason.nvim" },
     opts = {
       -- mason-nvim-dap 使用 DAP source 名，而不是 Mason 包名。
       ensure_installed = { "codelldb", "javadbg", "python" },

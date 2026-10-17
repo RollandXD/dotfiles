@@ -12,9 +12,6 @@ return {
     { "<leader>cm", "<cmd>ClangdMemoryUsage<cr>", ft = { "c", "cpp" }, desc = "内存布局" },
   },
   opts = {
-    inlay_hints = {
-      inline = false,  -- 使用 Neovim 0.10+ 原生 inlay hints，不用插件的
-    },
     ast = {
       -- 需要 Nerd Font 图标
       role_icons = {

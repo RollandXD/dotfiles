@@ -164,7 +164,7 @@ return {
       desc = "Dim 聚焦模式（切换）",
     },
     { "<leader>un", function() Snacks.notifier.show_history() end, desc = "通知历史" },
-    -- 在浏览器打开当前行的 GitHub 链接（复用 lazy.lua 里配置的 open-uri.sh）
+    -- 在浏览器打开当前行的 GitHub 链接（vim.ui.open → xdg-open）
     { "<leader>gb", function() Snacks.gitbrowse() end, mode = { "n", "v" }, desc = "在浏览器打开当前行" },
     -- 草稿缓冲区
     { "<leader>.", function() Snacks.scratch() end, desc = "草稿缓冲区" },

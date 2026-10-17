@@ -31,11 +31,12 @@ return {
         end
 
         -- 导航
-        map("n", "]h", gs.next_hunk, "下一个 Git 改动")
-        map("n", "[h", gs.prev_hunk, "上一个 Git 改动")
+        map("n", "]h", function() gs.nav_hunk("next") end, "下一个 Git 改动")
+        map("n", "[h", function() gs.nav_hunk("prev") end, "上一个 Git 改动")
 
         -- 操作
-        map("n", "<leader>hs", gs.stage_hunk, "暂存改动块")
+        -- stage_hunk 在已暂存的块上再按一次即取消暂存（替代已弃用的 undo_stage_hunk）
+        map("n", "<leader>hs", gs.stage_hunk, "暂存/取消暂存改动块")
         map("n", "<leader>hr", gs.reset_hunk, "重置改动块")
         map("v", "<leader>hs", function()
           gs.stage_hunk({ vim.fn.line("."), vim.fn.line("v") })
@@ -46,8 +47,8 @@ return {
 
         map("n", "<leader>hS", gs.stage_buffer, "暂存整个文件")
         map("n", "<leader>hR", gs.reset_buffer, "重置整个文件")
-        map("n", "<leader>hu", gs.undo_stage_hunk, "撤销暂存")
         map("n", "<leader>hp", gs.preview_hunk, "预览改动")
+        map("n", "<leader>hi", gs.preview_hunk_inline, "行内预览改动")
         map("n", "<leader>hb", function()
           gs.blame_line({ full = true })
         end, "查看行 Blame")
