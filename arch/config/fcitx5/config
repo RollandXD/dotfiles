@@ -1,6 +1,8 @@
 [Hotkey]
 # 按住切换键的修饰键时进行轮换切换
 # EnumerateWithTriggerKeys=True
+# 忽略重复的激活/取消激活键
+# ConsumeRedundantActivateKeys=False
 # 临时切换输入法
 AltTriggerKeys=
 # 向前切换输入法
@@ -43,7 +45,7 @@ TogglePreedit=
 # [Hotkey/NextCandidate]
 # 0=Tab
 
-# [Behavior]
+[Behavior]
 # 默认激活输入法
 # ActiveByDefault=False
 # 重新聚焦时重置状态
@@ -68,8 +70,6 @@ TogglePreedit=
 # CustomXkbOption=
 # Force Enabled Addons
 # EnabledAddons=
-# Force Disabled Addons
-# DisabledAddons=
 # Preload input method to be used by default
 # PreloadInputMethod=True
 # 允许在密码框中使用输入法
@@ -78,4 +78,7 @@ TogglePreedit=
 # ShowPreeditForPassword=False
 # 保存用户数据的时间间隔（以分钟为单位）
 # AutoSavePeriod=30
+
+[Behavior/DisabledAddons]
+0=clipboard
 
