@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# 英文随查：选词后弹出 GTK 小窗，给中文词义并播放美音。
+#
+#   english-lookup [selection]   读当前选区（niri Super+A）
+#   english-lookup stdin         从 stdin 读文字（nvim <leader>te）
+#   english-lookup clipboard|open|quit|status
+#
+# 代码在 dotfiles 的 arch/local/share/english-lookup；合成环境与模型由
+# install-english-lookup-models 装到 ~/.local/share/english-lookup；
+# DeepSeek key 放 ~/.config/english-lookup/deepseek.key（权限 600）。
+set -euo pipefail
+
+self=$(readlink -f -- "${BASH_SOURCE[0]}")
+app="$(dirname -- "$self")/../share/english-lookup/lookup_app.py"
+export PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
+exec /usr/bin/python "$app" "${@:-selection}"

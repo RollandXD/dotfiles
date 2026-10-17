@@ -81,6 +81,13 @@ ln -sf "$DOTFILES_DIR/arch/local/bin/install-dank-ocr-models" \
 ln -sf "$DOTFILES_DIR/arch/local/bin/dank-shutdown" \
        "$HOME/.local/bin/dank-shutdown"
 
+# 英文随查（niri Super+A / nvim <leader>te）：代码在 arch/local/share/english-lookup，
+# Kokoro 合成环境与模型由 install-english-lookup-models 装到 XDG 数据目录。
+ln -sf "$DOTFILES_DIR/arch/local/bin/english-lookup" \
+       "$HOME/.local/bin/english-lookup"
+ln -sf "$DOTFILES_DIR/arch/local/bin/install-english-lookup-models" \
+       "$HOME/.local/bin/install-english-lookup-models"
+
 # 磁盘空间监控：状态栏由 DMS 展示，user timer 负责跨阈值通知
 mkdir -p "$HOME/.config/systemd/user"
 ln -sf "$DOTFILES_DIR/arch/local/bin/disk-space-guard" \
@@ -92,8 +99,9 @@ ln -sf "$DOTFILES_DIR/arch/local/share/systemd/user/disk-space-guard.timer" \
 systemctl --user daemon-reload
 systemctl --user enable disk-space-guard.timer
 
-echo "==> [6/7] 安装截图 OCR 高精度模型..."
+echo "==> [6/7] 安装截图 OCR 与英文随查的本地模型..."
 "$HOME/.local/bin/install-dank-ocr-models"
+"$HOME/.local/bin/install-english-lookup-models"
 
 echo "==> [7/7] 设置默认 Shell 为 zsh..."
 chsh -s "$(which zsh)"
@@ -102,3 +110,4 @@ echo ""
 echo "✓ 安装完成！请重启终端。"
 echo "  若 .p10k.zsh 已存在，主题将自动加载。"
 echo "  首次配置主题可运行：p10k configure"
+echo "  英文随查需要 DeepSeek key：写入 ~/.config/english-lookup/deepseek.key 并 chmod 600。"

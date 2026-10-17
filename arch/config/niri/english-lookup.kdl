@@ -1,0 +1,12 @@
+// 英文随查：Kitty 当前选区 / 桌面选区 / 剪贴板，小窗浮动。程序见 ~/.local/bin/english-lookup。
+binds {
+    Super+A repeat=false hotkey-overlay-title="英文选词查询" {
+        spawn "english-lookup" "selection";
+    }
+}
+window-rule {
+    match app-id=r#"^io\.github\.rolland\.EnglishLookup$"#
+    open-floating true
+    default-column-width { fixed 680; }
+    default-window-height { fixed 440; }
+}

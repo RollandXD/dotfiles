@@ -306,3 +306,6 @@ cursor {
 include "dms/input.kdl"
 include "dms/windowrules.kdl"
 include "shorin-niri/binds.kdl"
+
+// 英文随查：Super+A 快捷键与浮窗规则
+include "english-lookup.kdl"

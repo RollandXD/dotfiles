@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# 英文随查的 Kokoro 合成环境：uv 管理的 Python 3.12 venv + int8 模型与声音，
+# 装到 ~/.local/share/english-lookup（约 550 MiB），不进 dotfiles。
+# 可重复运行：哈希一致的模型跳过下载，venv 按锁文件精确同步。
+# 只缺这一步时，英文随查仍能查词义和播放词典录音，只是句子不能朗读。
+set -euo pipefail
+
+self=$(readlink -f -- "${BASH_SOURCE[0]}")
+src="$(dirname -- "$self")/../share/english-lookup"
+data="${XDG_DATA_HOME:-$HOME/.local/share}/english-lookup"
+base=https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0
+
+# 发布页没有 digest，以下为 2026-10-09 首次下载后的本地记录。
+models=(
+    "kokoro-v1.0.int8.onnx 6e742170d309016e5891a994e1ce1559c702a2ccd0075e67ef7157974f6406cb"
+    "voices-v1.0.bin bca610b8308e8d99f32e6fe4197e7ec01679264efed0cac9140fe9c29f1fbf7d"
+)
+
+command -v uv >/dev/null || { echo "缺少 uv：paru -S uv" >&2; exit 1; }
+
+mkdir -p "$data/models/kokoro"
+for entry in "${models[@]}"; do
+    read -r name sha <<<"$entry"
+    target="$data/models/kokoro/$name"
+    if [[ -f $target ]] && echo "$sha  $target" | sha256sum -c --status; then
+        echo "==> $name 已就绪"
+        continue
+    fi
+    echo "==> 下载 $name"
+    curl -fL --retry 3 -o "$target.part" "$base/$name"
+    echo "$sha  $target.part" | sha256sum -c --status || {
+        rm -f "$target.part"
+        echo "$name 哈希不符，已删除" >&2
+        exit 1
+    }
+    mv "$target.part" "$target"
+done
+
+echo "==> 同步合成环境（Python 3.12）"
+uv venv --allow-existing --python 3.12 "$data/venv"
+uv pip sync --python "$data/venv/bin/python" "$src/requirements-voice.lock"
+echo "✓ 完成：$data"

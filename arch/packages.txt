@@ -30,3 +30,9 @@ tesseract-data-eng
 ttf-jetbrains-mono-nerd
 wl-clipboard
 vivid
+python-gobject
+gtk4
+gst-plugins-base
+gst-plugins-good
+ffmpeg
+uv

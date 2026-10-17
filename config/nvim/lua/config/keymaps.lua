@@ -79,3 +79,6 @@ map('n', '[b', '<cmd>bprevious<cr>', { desc = "上一个缓冲区" })
 -- ========== 终端 ==========
 -- 终端管理已由 snacks.terminal 接管（Ctrl-\ 打开浮动终端）
 -- 终端内的 Esc 快捷键由终端自行管理
+
+-- 英文随查：直接传入选区，保留寄存器和剪贴板。
+require("config.english_lookup").setup()
