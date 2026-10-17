@@ -299,7 +299,7 @@ include "shorin-niri/supertab.kdl"
 
 // 光标配置
 cursor {
-    xcursor-theme "breeze_cursors"
+    xcursor-theme "Nordzy-cursors"
     xcursor-size 30
     hide-after-inactive-ms 15000
 }

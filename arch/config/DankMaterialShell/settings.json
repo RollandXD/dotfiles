@@ -6,6 +6,7 @@
   "dockTransparency": 0.8,
   "cornerRadius": 12,
   "mouseAccelProfile": "flat",
+  "audioShowStreamDevices": true,
   "clockFormat": "24h",
   "animationSpeed": 4,
   "customAnimationDuration": 200,
@@ -22,10 +23,14 @@
       "width": 50
     },
     {
-      "id": "brightnessSlider",
+      "id": "plugin_rollandSystemSounds",
       "enabled": true,
-      "width": 50,
-      "deviceName": "ddc:i2c-14"
+      "width": 50
+    },
+    {
+      "id": "plugin_rollandBrightness",
+      "enabled": true,
+      "width": 50
     },
     {
       "id": "wifi",
@@ -60,12 +65,12 @@
     {
       "id": "nightMode",
       "enabled": true,
-      "width": 50
+      "width": 25
     },
     {
       "id": "darkMode",
       "enabled": true,
-      "width": 50
+      "width": 25
     }
   ],
   "showWorkspaceApps": true,
@@ -73,6 +78,7 @@
   "mediaUseAlbumArtAccent": true,
   "appleMusicAnimatedArtEnabled": true,
   "centeringMode": "geometric",
+  "appLauncherGridColumns": 5,
   "spotlightSectionViewModes": {
     "apps": "list"
   },
@@ -84,8 +90,8 @@
   "networkPreference": "wifi",
   "iconThemePerMode": true,
   "cursorSettings": {
-    "theme": "System Default",
-    "size": 24,
+    "theme": "Nordzy-cursors",
+    "size": 30,
     "niri": {
       "hideWhenTyping": false,
       "hideAfterInactiveMs": 0
@@ -103,7 +109,9 @@
   "launcherLogoColorOverride": "primary",
   "fontFamily": "Noto Sans CJK SC",
   "monoFontFamily": "JetBrains Maple Mono",
+  "fontWeight": 500,
   "fontScale": 1.25,
+  "muteSoundsWhenMediaPlaying": false,
   "acSuspendBehavior": 1,
   "batteryProfileName": "0",
   "lowerDisplayRefreshRateOnBattery": true,
@@ -117,8 +125,10 @@
   "dockIsolateDisplays": true,
   "notificationOverlayEnabled": true,
   "notificationTimeoutCritical": 5000,
+  "notificationShowTimeoutBar": true,
   "notificationFocusedMonitor": true,
   "osdPowerProfileEnabled": true,
+  "displayNameMode": "model",
   "screenPreferences": {
     "wallpaper": [
       "all"
@@ -324,7 +334,8 @@
     "hslHue": -1,
     "hslSaturation": 0,
     "hslLightness": 1,
-    "valid": true
+    "valid": true,
+    "rgba": -1
   },
   "systemMonitorCustomColor": {
     "r": 1,
@@ -337,7 +348,8 @@
     "hslHue": -1,
     "hslSaturation": 0,
     "hslLightness": 1,
-    "valid": true
+    "valid": true,
+    "rgba": -1
   },
   "builtInPluginSettings": {
     "dms_settings_search": {

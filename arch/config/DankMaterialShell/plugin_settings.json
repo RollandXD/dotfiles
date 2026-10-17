@@ -1,1 +1,22 @@
-{"aiUsage": {"enabled": true, "refreshInterval": 2, "codexAuthFile": "~/.codex/auth.json"}, "rollandStorage": {"enabled": true}, "rollandShutdown": {"enabled": true}, "rollandBattery": {"enabled": true}}
+{
+  "aiUsage": {
+    "enabled": true,
+    "refreshInterval": 2,
+    "codexAuthFile": "~/.codex/auth.json"
+  },
+  "rollandStorage": {
+    "enabled": true
+  },
+  "rollandShutdown": {
+    "enabled": true
+  },
+  "rollandBattery": {
+    "enabled": true
+  },
+  "rollandSystemSounds": {
+    "enabled": true
+  },
+  "rollandBrightness": {
+    "enabled": true
+  }
+}
